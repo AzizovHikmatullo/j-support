@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/AzizovHikmatullo/j-support/internal/categories"
 	"github.com/AzizovHikmatullo/j-support/internal/config"
 	"github.com/AzizovHikmatullo/j-support/internal/middleware"
 	"github.com/gin-gonic/gin"
@@ -52,6 +53,17 @@ func (a *App) Run() {
 
 func (a *App) InitRoutes() {
 	a.router.Use(middleware.LoggerMiddleware(a.logger))
+
+	categoriesRepo := categories.NewRepository(a.db)
+	categoriesService := categories.NewService(categoriesRepo)
+	categoriesHandler := categories.NewHandler(categoriesService)
+
+	categoriesRoutes := a.router.Group("/categories")
+	{
+		categoriesRoutes.POST("", categoriesHandler.Create)
+		categoriesRoutes.GET("", categoriesHandler.Get)
+		categoriesRoutes.PUT(":id", categoriesHandler.Update)
+	}
 
 	a.logger.Info("All routes created")
 }
