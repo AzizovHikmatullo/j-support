@@ -35,7 +35,7 @@ func (r *postgresRepo) Create(ctx context.Context, name, destination string) (Ca
 func (r *postgresRepo) GetAll(ctx context.Context) ([]Category, error) {
 	categories := make([]Category, 0)
 
-	if err := r.db.SelectContext(ctx, &categories, "SELECT id, name, enabled, destination, created_at FROM categories"); err != nil {
+	if err := r.db.SelectContext(ctx, &categories, "SELECT id, name, enabled, destination, created_at FROM categories ORDER BY id"); err != nil {
 		return categories, err
 	}
 
