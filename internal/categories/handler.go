@@ -40,7 +40,7 @@ func (h *handler) Create(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, category)
+	c.JSON(http.StatusCreated, category)
 }
 
 func (h *handler) Get(c *gin.Context) {
@@ -69,6 +69,7 @@ func (h *handler) Update(c *gin.Context) {
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
 	}
 
 	category, err := h.service.Update(c.Request.Context(), role, idInt, req.Name, req.Enabled)

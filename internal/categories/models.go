@@ -6,9 +6,10 @@ import (
 )
 
 var (
-	ErrForbidden   = errors.New("forbidden")
-	ErrInvalidName = errors.New("invalid name")
-	ErrInvalidDest = errors.New("invalid dest")
+	ErrForbidden        = errors.New("forbidden")
+	ErrInvalidName      = errors.New("invalid name")
+	ErrInvalidDest      = errors.New("invalid dest")
+	ErrCategoryNotFound = errors.New("category not found")
 )
 
 type Category struct {

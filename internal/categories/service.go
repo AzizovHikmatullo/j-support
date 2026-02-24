@@ -7,6 +7,7 @@ type Repository interface {
 	GetAll(ctx context.Context) ([]Category, error)
 	GetForDest(ctx context.Context, destination string) ([]Category, error)
 	Update(ctx context.Context, id int, name string, enabled bool) (Category, error)
+	GetByID(ctx context.Context, id int) (Category, error)
 }
 
 type service struct {
