@@ -70,9 +70,6 @@ func (h *Hub) Broadcast(room string, event Event) error {
 }
 
 func (h *Hub) Shutdown() {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
 	if h.closed {
 		return
 	}
@@ -83,6 +80,9 @@ func (h *Hub) Shutdown() {
 			client.Close()
 		}
 	}
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
 
 	h.rooms = make(map[string]map[*Client]struct{})
 }
