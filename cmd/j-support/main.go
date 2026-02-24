@@ -11,6 +11,7 @@ import (
 	"github.com/AzizovHikmatullo/j-support/internal/app"
 	"github.com/AzizovHikmatullo/j-support/internal/config"
 	"github.com/AzizovHikmatullo/j-support/internal/db"
+	"github.com/AzizovHikmatullo/j-support/internal/ws"
 	"github.com/AzizovHikmatullo/j-support/pkg/logger"
 )
 
@@ -29,7 +30,9 @@ func main() {
 		return
 	}
 
-	app := app.NewApp(cfg, logger, db)
+	hub := ws.NewHub()
+
+	app := app.NewApp(cfg, logger, db, hub)
 
 	app.Run()
 
@@ -47,6 +50,8 @@ func main() {
 	if err := app.Srv.Shutdown(shutdownCtx); err != nil {
 		logger.Info("Server forced to shutdown", slog.String("error", err.Error()))
 	}
+
+	hub.Shutdown()
 
 	db.Close()
 
