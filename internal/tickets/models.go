@@ -28,22 +28,22 @@ type Message struct {
 }
 
 type CreateTicketRequest struct {
-	CategoryID int    `json:"category_id"`
-	Message    string `json:"message"`
-	Subject    string `json:"subject"`
-	Source     string `json:"source"`
+	CategoryID int    `json:"category_id" binding:"required"`
+	Message    string `json:"message" binding:"required"`
+	Subject    string `json:"subject" binding:"required"`
+	Source     string `json:"source" binding:"required"`
 }
 
 type ChangeAssignedRequest struct {
-	AssignedTo int `json:"assigned_to"`
+	AssignedTo int `json:"assigned_to"  binding:"required"`
 }
 
 type ChangeStatusRequest struct {
-	Status string `json:"status"`
+	Status string `json:"status" binding:"required"`
 }
 
 type CreateMessageRequest struct {
-	Content string `json:"content"`
+	Content string `json:"content" binding:"required"`
 }
 
 var (

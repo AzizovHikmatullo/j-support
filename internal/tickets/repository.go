@@ -27,7 +27,7 @@ func (r *repository) Create(ctx context.Context, tx *sqlx.Tx, userID, categoryID
 		Source:     source,
 	}
 
-	if err := tx.QueryRowxContext(ctx, "INSERT INTO tickets(category_id, creator_id, status, subject, source) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at", categoryID, userID, statusOpen, subject, source).StructScan(&ticket); err != nil {
+	if err := tx.QueryRowxContext(ctx, "INSERT INTO tickets(category_id, creator_id, status, subject, source) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at, updated_at", categoryID, userID, statusOpen, subject, source).StructScan(&ticket); err != nil {
 		return Ticket{}, err
 	}
 
@@ -115,7 +115,7 @@ func (r *repository) CreateMessage(ctx context.Context, tx *sqlx.Tx, ticketID, s
 func (r *repository) GetMessages(ctx context.Context, ticketID int) ([]Message, error) {
 	var messages []Message
 
-	if err := r.db.SelectContext(ctx, &messages, "SELECT id, ticket_id, sender_id, sender_type, content, created_at FROM messages WHERE ticket_id = $1 ORDER BY created_at DESC", ticketID); err != nil {
+	if err := r.db.SelectContext(ctx, &messages, "SELECT id, ticket_id, sender_id, sender_type, content, created_at FROM messages WHERE ticket_id = $1 ORDER BY created_at", ticketID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return messages, nil
 		}

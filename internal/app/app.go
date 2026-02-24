@@ -80,7 +80,7 @@ func (a *App) InitRoutes() {
 	categoriesRoutes.Use(middleware.AuthMiddleware())
 	{
 		categoriesRoutes.POST("", middleware.RequireRole("admin"), categoriesHandler.Create)
-		categoriesRoutes.GET("", middleware.RequireRole("admin"), categoriesHandler.Get)
+		categoriesRoutes.GET("", middleware.RequireRole("admin", "support", "user"), categoriesHandler.Get)
 		categoriesRoutes.PUT(":id", middleware.RequireRole("admin"), categoriesHandler.Update)
 	}
 
@@ -98,6 +98,7 @@ func (a *App) InitRoutes() {
 		ticketsRoutes.PATCH(":id/status", middleware.RequireRole("user", "support", "admin"), ticketsHandler.ChangeStatus)
 
 		ticketsRoutes.POST(":id/messages", middleware.RequireRole("user", "support", "admin"), ticketsHandler.CreateMessage)
+		ticketsRoutes.GET(":id/messages", middleware.RequireRole("user", "support", "admin"), ticketsHandler.GetMessages)
 	}
 
 	wsHandler := ws.NewWSHandler(a.hub)

@@ -202,3 +202,21 @@ func (s *service) CreateMessage(ctx context.Context, ticketID, senderID int, sen
 
 	return message, nil
 }
+
+func (s *service) GetMessages(ctx context.Context, role string, ticketID, userID int) ([]Message, error) {
+	ticket, err := s.repo.GetByID(ctx, ticketID)
+	if err != nil {
+		return nil, err
+	}
+
+	if role == "user" && ticket.CreatorID != userID {
+		return nil, ErrForbidden
+	}
+
+	messages, err := s.repo.GetMessages(ctx, ticketID)
+	if err != nil {
+		return nil, err
+	}
+
+	return messages, nil
+}

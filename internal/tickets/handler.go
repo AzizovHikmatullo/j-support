@@ -15,6 +15,7 @@ type Service interface {
 	ChangeAssigned(ctx context.Context, role string, userID, ticketID, assignedTo int) (Ticket, error)
 	ChangeStatus(ctx context.Context, role, status string, ticketID, userID int) (Ticket, error)
 	CreateMessage(ctx context.Context, ticketID, senderID int, senderType, content string) (Message, error)
+	GetMessages(ctx context.Context, role string, ticketID, userID int) ([]Message, error)
 }
 
 type handler struct {
@@ -152,4 +153,23 @@ func (h *handler) CreateMessage(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, message)
+}
+
+func (h *handler) GetMessages(c *gin.Context) {
+	role := c.GetString("role")
+	userID := c.GetInt("userID")
+
+	ticketID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid ticketID"})
+		return
+	}
+
+	messages, err := h.service.GetMessages(c.Request.Context(), role, ticketID, userID)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, messages)
 }
