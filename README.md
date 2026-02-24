@@ -119,12 +119,15 @@ type Category struct {
 
 ```go
 type Ticket struct {
-    ID         int64
-    CategoryID int64
-    CreatorID  string
-    AssignedTo *string
-    Status     TicketStatus
-    Source     TicketSource
+    ID         int
+    CategoryID int
+    CreatorID  int
+    AssignedTo *int
+    Status     string
+    Subject    string
+    Source     string
+    CreatedAt  time.Time
+    UpdatedAt  time.Time
 }
 ```
 
@@ -137,11 +140,12 @@ TicketSource: {web, mobile, service}
 
 ```go
 type Message struct {
-    ID         int64
-    TicketID   int64
-    SenderID   string
-    SenderType SenderType
-    Content    string
+    ID         int64  `db:"id"`
+    TicketID   int    `db:"ticket_id"`
+    SenderID   int    `db:"sender_id"`
+    SenderType string `db:"sender_type"`
+    Content    string `db:"content"`
+    CreatedAt  string `db:"created_at"`
 }
 ```
 ### SenderType
@@ -161,8 +165,7 @@ type Message struct {
 id bigserial primary key
 name text not null
 enabled boolean not null default true
-available_for_client boolean default false
-available_for_driver boolean default false
+destination text not null,
 created_at timestamp not null
 updated_at timestamp not null
 ```
@@ -172,8 +175,8 @@ updated_at timestamp not null
 ```sql
 id bigserial primary key
 category_id bigint references categories(id)
-creator_id text not null
-assigned_to text
+creator_id int not null
+assigned_to int
 status text not null
 subject text not null
 source text not null
@@ -184,11 +187,11 @@ updated_at timestamp not null
 
 ## 5.3 messages
 ```sql
-id bigserial primary key
-ticket_id bigint references tickets(id) on delete cascade
-sender_id text not null
-sender_type text not null
-content text not null
+id bigserial primary key,
+ticket_id integer not null references tickets(id),
+sender_id integer not null,
+sender_type text not null,
+content text not null,
 created_at timestamp not null
 ```
 ---
@@ -206,9 +209,8 @@ PATCH /categories/{id}/enable
 POST  /tickets
 GET   /tickets
 GET   /tickets/{id}
-POST  /tickets/{id}/assign
+PATCH  /tickets/{id}/assign
 PATCH /tickets/{id}/status
-PATCH /tickets/{id}/close
 
 POST  /tickets/{id}/messages
 ```
@@ -224,7 +226,8 @@ POST  /tickets/{id}/messages
 Request:
 ```json
 {
-  "name": "Payments"
+  "name": "Payments",
+  "destination": "user"
 }
 ```
 
@@ -289,30 +292,6 @@ Response:
 }
 ```
 ---
-
-### PATCH /categories/{id}/disable
-
-Отключение категории
-
-Response:
-```json
-{
-  "enabled": false
-}
-```
----
-
-### PATCH /categories/{id}/enable
-
-Включение категории
-
-Response:
-```json
-{
-  "enabled": true
-}
-```
----
 ## 6.2 Tickets
 
 ### POST /tickets
@@ -321,19 +300,20 @@ Response:
 Доступ: user
 
 Request:
+
 ```json
 {
   "category_id": 1,
-  "message": "I can't complete payment"
+  "message": "I can't complete payment",
+  "source": "mobile",
+  "subject": "App error"
 }
 ```
 
 Response:
 ```json
 {
-  "ticket_id": 10,
-  "status": "open",
-  "created_at": "2026-02-17T10:10:00Z"
+  "ticket_id": 10
 }
 ```
 
@@ -404,7 +384,7 @@ Response:
 ```
 ---
 
-### POST /tickets/{id}/assign
+### PATCH /tickets/{id}/assign
 
 Назначить тикет.
 Доступ: support (только себе), admin (может указать assigned_to)
@@ -434,7 +414,7 @@ Response
 ### PATCH /tickets/{id}/status
 
 Изменить статус тикета.
-Доступ: support (assigned), admin
+Доступ: user (только свой), support (assigned), admin
 
 Request:
 ```json
@@ -442,20 +422,6 @@ Request:
   "status": "closed"
 }
 ```
-
-Response:
-```json
-{
-  "ticket_id": 10,
-  "status": "closed"
-}
-```
----
-
-### PATCH /tickets/{id}/close
-
-Пользователь закрывает свой тикет.
-Доступ: user
 
 Response:
 ```json
