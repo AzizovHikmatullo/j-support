@@ -170,10 +170,6 @@ func (s *service) CreateMessage(ctx context.Context, ticketID, senderID int, sen
 		return Message{}, err
 	}
 
-	if ticket.Status == statusClosed {
-		return Message{}, ErrClosedTicket
-	}
-
 	if senderType == "user" && ticket.CreatorID != senderID {
 		return Message{}, ErrForbidden
 	}

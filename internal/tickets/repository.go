@@ -105,7 +105,10 @@ func (r *repository) CreateMessage(ctx context.Context, tx *sqlx.Tx, ticketID, s
 		Content:    content,
 	}
 
-	if err := tx.QueryRowxContext(ctx, "INSERT INTO messages(ticket_id, sender_id, sender_type, content) VALUES ($1, $2, $3, $4) RETURNING id, created_at", ticketID, senderID, senderType, content).StructScan(&message); err != nil {
+	if err := tx.QueryRowxContext(ctx, "INSERT INTO messages(ticket_id, sender_id, sender_type, content) SELECT $1, $2, $3, $4 FROM tickets WHERE id = $1 AND status != 'closed' RETURNING id, created_at", ticketID, senderID, senderType, content).StructScan(&message); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Message{}, ErrClosedTicket
+		}
 		return Message{}, err
 	}
 
