@@ -69,7 +69,7 @@ func (r *postgresRepo) Update(ctx context.Context, id int, name string, enabled 
 func (r *postgresRepo) GetByID(ctx context.Context, id int) (Category, error) {
 	var category Category
 
-	err := r.db.GetContext(ctx, &category, "SELECT id, name, enabled FROM categories WHERE id = $1", id)
+	err := r.db.GetContext(ctx, &category, "SELECT id, name, enabled, destination, created_at FROM categories WHERE id = $1", id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Category{}, ErrCategoryNotFound
