@@ -47,13 +47,14 @@ type CreateMessageRequest struct {
 }
 
 var (
-	ErrUndefined        = errors.New("something went wrong")
-	ErrCategoryDisabled = errors.New("category disabled")
-	ErrForbidden        = errors.New("forbidden")
-	ErrInvalidStatus    = errors.New("invalid status")
-	ErrCannotAssign     = errors.New("you can not assign this ticket")
-	ErrTicketNotFound   = errors.New("ticket not found")
-	ErrClosedTicket     = errors.New("cannot write to closed ticket")
+	ErrUndefined          = errors.New("something went wrong")
+	ErrCategoryDisabled   = errors.New("category disabled")
+	ErrForbidden          = errors.New("forbidden")
+	ErrInvalidStatus      = errors.New("invalid status")
+	ErrCannotAssign       = errors.New("you can not assign this ticket")
+	ErrTicketNotFound     = errors.New("ticket not found")
+	ErrClosedTicket       = errors.New("cannot write to closed ticket")
+	ErrSupportCannotWrite = errors.New("you cannot write to this ticket")
 )
 
 const (

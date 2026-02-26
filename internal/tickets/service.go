@@ -178,6 +178,10 @@ func (s *service) CreateMessage(ctx context.Context, ticketID, senderID int, sen
 		return Message{}, ErrForbidden
 	}
 
+	if senderType == "support" && ticket.AssignedTo == nil {
+		return Message{}, ErrSupportCannotWrite
+	}
+
 	if senderType == "support" && ticket.AssignedTo != nil {
 		if *ticket.AssignedTo != senderID {
 			return Message{}, ErrForbidden
