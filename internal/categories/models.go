@@ -6,7 +6,6 @@ import (
 )
 
 var (
-	ErrForbidden        = errors.New("forbidden")
 	ErrInvalidName      = errors.New("invalid name")
 	ErrInvalidDest      = errors.New("invalid dest")
 	ErrCategoryNotFound = errors.New("category not found")
@@ -29,4 +28,10 @@ type CreateCategoryRequest struct {
 type UpdateCategoryRequest struct {
 	Name    string `json:"name"`
 	Enabled bool   `json:"enabled"`
+}
+
+var destinationMapping = map[string]string{
+	"user":   "user",
+	"client": "user",
+	"driver": "driver",
 }

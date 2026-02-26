@@ -25,11 +25,12 @@ func (s *service) Create(ctx context.Context, name, destination string) (Categor
 		return Category{}, ErrInvalidName
 	}
 
-	if destination != "user" && destination != "driver" {
+	dest, ok := destinationMapping[destination]
+	if !ok {
 		return Category{}, ErrInvalidDest
 	}
 
-	return s.repo.Create(ctx, name, destination)
+	return s.repo.Create(ctx, name, dest)
 }
 
 func (s *service) Get(ctx context.Context, role string) ([]Category, error) {
