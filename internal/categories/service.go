@@ -20,11 +20,7 @@ func NewService(repo Repository) Service {
 	}
 }
 
-func (s *service) Create(ctx context.Context, role, name, destination string) (Category, error) {
-	if role != "admin" {
-		return Category{}, ErrForbidden
-	}
-
+func (s *service) Create(ctx context.Context, name, destination string) (Category, error) {
 	if name == "" {
 		return Category{}, ErrInvalidName
 	}
@@ -44,11 +40,7 @@ func (s *service) Get(ctx context.Context, role string) ([]Category, error) {
 	return s.repo.GetForDest(ctx, role)
 }
 
-func (s *service) Update(ctx context.Context, role string, id int, name string, enabled bool) (Category, error) {
-	if role != "admin" {
-		return Category{}, ErrForbidden
-	}
-
+func (s *service) Update(ctx context.Context, id int, name string, enabled bool) (Category, error) {
 	if name == "" {
 		return Category{}, ErrInvalidName
 	}
