@@ -127,6 +127,10 @@ func (s *service) ChangeAssigned(ctx context.Context, role string, userID, ticke
 		return Ticket{}, err
 	}
 
+	if ticket.Status == statusClosed {
+		return Ticket{}, ErrClosedTicket
+	}
+
 	return s.repo.ChangeAssigned(ctx, ticket.ID, assignedTo)
 }
 
