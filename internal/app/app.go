@@ -68,6 +68,7 @@ func (a *App) InitRoutes() {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
+
 	a.router.Use(middleware.LoggerMiddleware(a.logger))
 
 	publisher := ws.NewPublisher(a.hub)
@@ -77,11 +78,11 @@ func (a *App) InitRoutes() {
 	categoriesHandler := categories.NewHandler(categoriesService)
 
 	categoriesRoutes := a.router.Group("/categories")
-	categoriesRoutes.Use(middleware.AuthMiddleware())
+	categoriesRoutes.Use(middleware.AuthMiddleware(a.cfg.JWT.Secret))
 	{
 		categoriesRoutes.POST("", middleware.RequireRole("admin"), categoriesHandler.Create)
 		categoriesRoutes.GET("", middleware.RequireRole("admin", "support", "user"), categoriesHandler.Get)
-		categoriesRoutes.PUT(":id", middleware.RequireRole("admin"), categoriesHandler.Update)
+		categoriesRoutes.PUT("/:id", middleware.RequireRole("admin"), categoriesHandler.Update)
 	}
 
 	ticketsRepo := tickets.NewRepository(a.db)
@@ -89,7 +90,7 @@ func (a *App) InitRoutes() {
 	ticketsHandler := tickets.NewHandler(ticketsService)
 
 	ticketsRoutes := a.router.Group("/tickets")
-	ticketsRoutes.Use(middleware.AuthMiddleware())
+	ticketsRoutes.Use(middleware.AuthMiddleware(a.cfg.JWT.Secret))
 	{
 		ticketsRoutes.GET("", middleware.RequireRole("user", "support", "admin"), ticketsHandler.Get)
 		ticketsRoutes.POST("", middleware.RequireRole("user"), ticketsHandler.Create)

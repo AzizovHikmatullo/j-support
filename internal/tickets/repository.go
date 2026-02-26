@@ -113,7 +113,7 @@ func (r *repository) CreateMessage(ctx context.Context, tx *sqlx.Tx, ticketID, s
 }
 
 func (r *repository) GetMessages(ctx context.Context, ticketID int) ([]Message, error) {
-	var messages []Message
+	messages := make([]Message, 0)
 
 	if err := r.db.SelectContext(ctx, &messages, "SELECT id, ticket_id, sender_id, sender_type, content, created_at FROM messages WHERE ticket_id = $1 ORDER BY created_at", ticketID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

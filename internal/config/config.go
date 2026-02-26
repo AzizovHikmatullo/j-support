@@ -19,6 +19,9 @@ type Config struct {
 		User     string
 		Password string
 	}
+	JWT struct {
+		Secret string
+	}
 }
 
 func LoadConfig() (*Config, error) {
@@ -35,6 +38,8 @@ func LoadConfig() (*Config, error) {
 	cfg.Database.DBName = os.Getenv("POSTGRES_DB")
 	cfg.Database.User = os.Getenv("POSTGRES_USER")
 	cfg.Database.Password = os.Getenv("POSTGRES_PASSWORD")
+
+	cfg.JWT.Secret = os.Getenv("JWT_SECRET")
 
 	return cfg, nil
 }
