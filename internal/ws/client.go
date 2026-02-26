@@ -28,7 +28,6 @@ func NewClient(conn *websocket.Conn, hub *Hub, room string) *Client {
 		room: room,
 		send: make(chan []byte, 256),
 	}
-
 }
 
 func (c *Client) ReadPump() {

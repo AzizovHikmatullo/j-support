@@ -20,16 +20,23 @@ func (h *Hub) Join(room string, client *Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
+	if h.closed {
+		return
+	}
+
 	if _, ok := h.rooms[room]; !ok {
 		h.rooms[room] = make(map[*Client]struct{})
 	}
-
 	h.rooms[room][client] = struct{}{}
 }
 
 func (h *Hub) Leave(room string, client *Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+
+	if h.closed {
+		return
+	}
 
 	if clients, ok := h.rooms[room]; ok {
 		delete(clients, client)
@@ -70,19 +77,23 @@ func (h *Hub) Broadcast(room string, event Event) error {
 }
 
 func (h *Hub) Shutdown() {
+	h.mu.Lock()
 	if h.closed {
+		h.mu.Unlock()
 		return
 	}
 	h.closed = true
 
-	for _, clients := range h.rooms {
-		for client := range clients {
-			client.Close()
+	var clients []*Client
+	for _, room := range h.rooms {
+		for client := range room {
+			clients = append(clients, client)
 		}
 	}
-
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
 	h.rooms = make(map[string]map[*Client]struct{})
+	h.mu.Unlock()
+
+	for _, client := range clients {
+		client.Close()
+	}
 }
