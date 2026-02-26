@@ -57,6 +57,10 @@ func (s *service) Create(ctx context.Context, userID, categoryID int, role, sour
 		return Ticket{}, ErrCategoryDisabled
 	}
 
+	if source != sourceWeb && source != sourceMobile && source != sourceService {
+		return Ticket{}, ErrInvalidSource
+	}
+
 	ticket, err := s.repo.Create(ctx, tx, userID, categoryID, source, subject)
 	if err != nil {
 		return Ticket{}, err
@@ -67,7 +71,7 @@ func (s *service) Create(ctx context.Context, userID, categoryID int, role, sour
 		return Ticket{}, err
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err = tx.Commit(); err != nil {
 		return Ticket{}, err
 	}
 

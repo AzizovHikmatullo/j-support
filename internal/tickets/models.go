@@ -51,6 +51,7 @@ var (
 	ErrCategoryDisabled   = errors.New("category disabled")
 	ErrForbidden          = errors.New("forbidden")
 	ErrInvalidStatus      = errors.New("invalid status")
+	ErrInvalidSource      = errors.New("invalid source")
 	ErrCannotAssign       = errors.New("you can not assign this ticket")
 	ErrTicketNotFound     = errors.New("ticket not found")
 	ErrClosedTicket       = errors.New("cannot write to closed ticket")
@@ -62,4 +63,8 @@ const (
 	statusOpen       = "open"
 	statusInProgress = "in_progress"
 	statusClosed     = "closed"
+
+	sourceWeb     = "web"
+	sourceMobile  = "mobile"
+	sourceService = "service"
 )
