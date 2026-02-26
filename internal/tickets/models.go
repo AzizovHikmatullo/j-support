@@ -55,6 +55,7 @@ var (
 	ErrTicketNotFound     = errors.New("ticket not found")
 	ErrClosedTicket       = errors.New("cannot write to closed ticket")
 	ErrSupportCannotWrite = errors.New("you cannot write to this ticket")
+	ErrPublishFailed      = errors.New("failed to publish message")
 )
 
 const (

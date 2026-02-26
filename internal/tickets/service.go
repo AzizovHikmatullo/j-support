@@ -206,7 +206,9 @@ func (s *service) CreateMessage(ctx context.Context, ticketID, senderID int, sen
 		return Message{}, err
 	}
 
-	_ = s.publisher.PublishToTicket(ticket.ID, event)
+	if err = s.publisher.PublishToTicket(ticket.ID, event); err != nil {
+		return Message{}, ErrPublishFailed
+	}
 
 	return message, nil
 }
