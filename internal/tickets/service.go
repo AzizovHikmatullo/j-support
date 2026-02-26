@@ -104,6 +104,10 @@ func (s *service) GetByID(ctx context.Context, role string, userID, ticketID int
 		return ticket, nil
 	}
 
+	if role == "support" && ticket.Status == statusOpen {
+		return ticket, nil
+	}
+
 	if role == "support" && ticket.AssignedTo != nil {
 		if *ticket.AssignedTo == userID {
 			return ticket, nil
