@@ -26,8 +26,8 @@ type CreateCategoryRequest struct {
 }
 
 type UpdateCategoryRequest struct {
-	Name    string `json:"name"`
-	Enabled bool   `json:"enabled"`
+	Name    *string `json:"name"`
+	Enabled *bool   `json:"enabled"`
 }
 
 var destinationMapping = map[string]string{

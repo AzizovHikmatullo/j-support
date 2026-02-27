@@ -6,7 +6,7 @@ type Repository interface {
 	Create(ctx context.Context, name, destination string) (Category, error)
 	GetAll(ctx context.Context) ([]Category, error)
 	GetForDest(ctx context.Context, destination string) ([]Category, error)
-	Update(ctx context.Context, id int, name string, enabled bool) (Category, error)
+	Update(ctx context.Context, id int, name *string, enabled *bool) (Category, error)
 	GetByID(ctx context.Context, id int) (Category, error)
 }
 
@@ -41,8 +41,8 @@ func (s *service) Get(ctx context.Context, role string) ([]Category, error) {
 	return s.repo.GetForDest(ctx, role)
 }
 
-func (s *service) Update(ctx context.Context, id int, name string, enabled bool) (Category, error) {
-	if name == "" {
+func (s *service) Update(ctx context.Context, id int, name *string, enabled *bool) (Category, error) {
+	if name != nil && *name == "" {
 		return Category{}, ErrInvalidName
 	}
 

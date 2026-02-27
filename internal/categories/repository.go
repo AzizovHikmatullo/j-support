@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -52,10 +53,30 @@ func (r *postgresRepo) GetForDest(ctx context.Context, destination string) ([]Ca
 	return categories, nil
 }
 
-func (r *postgresRepo) Update(ctx context.Context, id int, name string, enabled bool) (Category, error) {
+func (r *postgresRepo) Update(ctx context.Context, id int, name *string, enabled *bool) (Category, error) {
 	var category Category
 
-	err := r.db.QueryRowxContext(ctx, "UPDATE categories SET name = $2, enabled = $3, updated_at = now() WHERE id = $1 RETURNING id, name, enabled, destination, created_at", id, name, enabled).StructScan(&category)
+	builder := squirrel.Update("categories").
+		PlaceholderFormat(squirrel.Dollar).
+		Where(squirrel.Eq{"id": id}).
+		Set("updated_at", squirrel.Expr("NOW()"))
+
+	if name != nil {
+		builder = builder.Set("name", *name)
+	}
+
+	if enabled != nil {
+		builder = builder.Set("enabled", *enabled)
+	}
+
+	builder = builder.Suffix("RETURNING id, name, enabled, destination, created_at")
+
+	query, args, err := builder.ToSql()
+	if err != nil {
+		return Category{}, err
+	}
+
+	err = r.db.QueryRowxContext(ctx, query, args...).StructScan(&category)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Category{}, ErrCategoryNotFound

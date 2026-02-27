@@ -11,7 +11,7 @@ import (
 type Service interface {
 	Create(ctx context.Context, name, destination string) (Category, error)
 	Get(ctx context.Context, role string) ([]Category, error)
-	Update(ctx context.Context, id int, name string, enabled bool) (Category, error)
+	Update(ctx context.Context, id int, name *string, enabled *bool) (Category, error)
 }
 
 type handler struct {
