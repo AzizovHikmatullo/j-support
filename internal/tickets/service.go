@@ -5,20 +5,21 @@ import (
 
 	"github.com/AzizovHikmatullo/j-support/internal/categories"
 	"github.com/AzizovHikmatullo/j-support/internal/ws"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
 type Repository interface {
-	Create(ctx context.Context, tx *sqlx.Tx, userID, categoryID int, source, subject string) (Ticket, error)
+	Create(ctx context.Context, tx *sqlx.Tx, ticket *Ticket) error
 	GetByCreator(ctx context.Context, creatorID int) ([]Ticket, error)
 	GetSupportTickets(ctx context.Context, assignedTo int) ([]Ticket, error)
 	GetAll(ctx context.Context) ([]Ticket, error)
-	GetByID(ctx context.Context, ticketID int) (Ticket, error)
-	ChangeAssigned(ctx context.Context, ticketID, assignedTo int) (Ticket, error)
-	ChangeStatus(ctx context.Context, status string, ticketID int) (Ticket, error)
+	GetByID(ctx context.Context, ticketID uuid.UUID) (Ticket, error)
+	ChangeAssigned(ctx context.Context, ticketID uuid.UUID, assignedTo int) (Ticket, error)
+	ChangeStatus(ctx context.Context, status string, ticketID uuid.UUID) (Ticket, error)
 
-	CreateMessage(ctx context.Context, tx *sqlx.Tx, ticketID, senderID int, senderType, content string) (Message, error)
-	GetMessages(ctx context.Context, ticketID int) ([]Message, error)
+	CreateMessage(ctx context.Context, tx *sqlx.Tx, message *Message) error
+	GetMessages(ctx context.Context, ticketID uuid.UUID) ([]Message, error)
 	BeginTxx(ctx context.Context) (*sqlx.Tx, error)
 }
 
@@ -36,10 +37,10 @@ func NewService(repo Repository, categoryRepo categories.Repository, pub ws.Publ
 	}
 }
 
-func (s *service) Create(ctx context.Context, userID, categoryID int, role, source, subject, content string) (Ticket, error) {
+func (s *service) Create(ctx context.Context, userID int, role string, req CreateTicketRequest) (*Ticket, error) {
 	tx, err := s.repo.BeginTxx(ctx)
 	if err != nil {
-		return Ticket{}, ErrUndefined
+		return nil, ErrUndefined
 	}
 
 	defer func() {
@@ -48,31 +49,35 @@ func (s *service) Create(ctx context.Context, userID, categoryID int, role, sour
 		}
 	}()
 
-	category, err := s.categoryRepo.GetByID(ctx, categoryID)
+	category, err := s.categoryRepo.GetByID(ctx, req.CategoryID)
 	if err != nil {
-		return Ticket{}, err
+		return nil, err
 	}
 
 	if !category.Enabled {
-		return Ticket{}, ErrCategoryDisabled
+		return nil, ErrCategoryDisabled
 	}
 
-	if source != sourceWeb && source != sourceMobile && source != sourceService {
-		return Ticket{}, ErrInvalidSource
+	if !checkSource(req.Source) {
+		return nil, ErrInvalidSource
 	}
 
-	ticket, err := s.repo.Create(ctx, tx, userID, categoryID, source, subject)
+	ticket := NewTicket(userID, req)
+
+	err = s.repo.Create(ctx, tx, ticket)
 	if err != nil {
-		return Ticket{}, err
+		return nil, err
 	}
 
-	_, err = s.repo.CreateMessage(ctx, tx, ticket.ID, userID, role, content)
+	message := NewMessage(ticket.ID, userID, role, req.Message)
+
+	err = s.repo.CreateMessage(ctx, tx, message)
 	if err != nil {
-		return Ticket{}, err
+		return nil, err
 	}
 
 	if err = tx.Commit(); err != nil {
-		return Ticket{}, err
+		return nil, err
 	}
 
 	return ticket, nil
@@ -91,7 +96,7 @@ func (s *service) Get(ctx context.Context, role string, userID int) ([]Ticket, e
 	}
 }
 
-func (s *service) GetByID(ctx context.Context, role string, userID, ticketID int) (Ticket, error) {
+func (s *service) GetByID(ctx context.Context, userID int, role string, ticketID uuid.UUID) (Ticket, error) {
 	ticket, err := s.repo.GetByID(ctx, ticketID)
 	if err != nil {
 		return Ticket{}, err
@@ -125,7 +130,7 @@ func (s *service) GetByID(ctx context.Context, role string, userID, ticketID int
 	return Ticket{}, ErrForbidden
 }
 
-func (s *service) ChangeAssigned(ctx context.Context, role string, userID, ticketID, assignedTo int) (Ticket, error) {
+func (s *service) ChangeAssigned(ctx context.Context, userID int, role string, ticketID uuid.UUID, assignedTo int) (Ticket, error) {
 	if role == "support" && assignedTo != userID {
 		return Ticket{}, ErrCannotAssign
 	}
@@ -142,7 +147,7 @@ func (s *service) ChangeAssigned(ctx context.Context, role string, userID, ticke
 	return s.repo.ChangeAssigned(ctx, ticket.ID, assignedTo)
 }
 
-func (s *service) ChangeStatus(ctx context.Context, role, status string, ticketID, userID int) (Ticket, error) {
+func (s *service) ChangeStatus(ctx context.Context, userID int, role string, ticketID uuid.UUID, status string) (Ticket, error) {
 	if status != statusOpen && status != statusInProgress && status != statusClosed {
 		return Ticket{}, ErrInvalidStatus
 	}
@@ -165,10 +170,10 @@ func (s *service) ChangeStatus(ctx context.Context, role, status string, ticketI
 	return s.repo.ChangeStatus(ctx, status, ticketID)
 }
 
-func (s *service) CreateMessage(ctx context.Context, ticketID, senderID int, senderType, content string) (Message, error) {
+func (s *service) CreateMessage(ctx context.Context, ticketID uuid.UUID, senderID int, senderType, content string) (*Message, error) {
 	tx, err := s.repo.BeginTxx(ctx)
 	if err != nil {
-		return Message{}, ErrUndefined
+		return nil, ErrUndefined
 	}
 
 	defer func() {
@@ -179,26 +184,28 @@ func (s *service) CreateMessage(ctx context.Context, ticketID, senderID int, sen
 
 	ticket, err := s.repo.GetByID(ctx, ticketID)
 	if err != nil {
-		return Message{}, err
+		return nil, err
 	}
 
 	if senderType == "user" && ticket.CreatorID != senderID {
-		return Message{}, ErrForbidden
+		return nil, ErrForbidden
 	}
 
 	if senderType == "support" && ticket.AssignedTo == nil {
-		return Message{}, ErrSupportCannotWrite
+		return nil, ErrSupportCannotWrite
 	}
 
 	if senderType == "support" && ticket.AssignedTo != nil {
 		if *ticket.AssignedTo != senderID {
-			return Message{}, ErrForbidden
+			return nil, ErrForbidden
 		}
 	}
 
-	message, err := s.repo.CreateMessage(ctx, tx, ticketID, senderID, senderType, content)
+	message := NewMessage(ticketID, senderID, senderType, content)
+
+	err = s.repo.CreateMessage(ctx, tx, message)
 	if err != nil {
-		return Message{}, err
+		return nil, err
 	}
 
 	event := ws.Event{
@@ -207,17 +214,17 @@ func (s *service) CreateMessage(ctx context.Context, ticketID, senderID int, sen
 	}
 
 	if err = tx.Commit(); err != nil {
-		return Message{}, err
+		return nil, err
 	}
 
 	if err = s.publisher.PublishToTicket(ticket.ID, event); err != nil {
-		return Message{}, ErrPublishFailed
+		return nil, ErrPublishFailed
 	}
 
 	return message, nil
 }
 
-func (s *service) GetMessages(ctx context.Context, role string, ticketID, userID int) ([]Message, error) {
+func (s *service) GetMessages(ctx context.Context, userID int, role string, ticketID uuid.UUID) ([]Message, error) {
 	ticket, err := s.repo.GetByID(ctx, ticketID)
 	if err != nil {
 		return nil, err
@@ -233,4 +240,13 @@ func (s *service) GetMessages(ctx context.Context, role string, ticketID, userID
 	}
 
 	return messages, nil
+}
+
+func checkSource(source string) bool {
+	switch source {
+	case sourceWeb, sourceMobile, sourceService:
+		return true
+	default:
+		return false
+	}
 }

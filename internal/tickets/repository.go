@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -18,26 +19,40 @@ func NewRepository(db *sqlx.DB) Repository {
 	}
 }
 
-func (r *repository) Create(ctx context.Context, tx *sqlx.Tx, userID, categoryID int, source, subject string) (Ticket, error) {
-	ticket := Ticket{
-		CategoryID: categoryID,
-		CreatorID:  userID,
-		Status:     statusOpen,
-		Subject:    subject,
-		Source:     source,
+func (r *repository) Create(ctx context.Context, tx *sqlx.Tx, ticket *Ticket) error {
+	query := `
+ 		INSERT INTO tickets(id, category_id, creator_id, status, subject, source) 
+ 		VALUES ($1, $2, $3, $4, $5, $6) 
+ 		RETURNING created_at, updated_at
+	`
+
+	err := tx.QueryRowxContext(ctx, query,
+		ticket.ID,
+		ticket.CategoryID,
+		ticket.CreatorID,
+		ticket.Status,
+		ticket.Subject,
+		ticket.Source,
+	).Scan(&ticket.CreatedAt, &ticket.UpdatedAt)
+	if err != nil {
+		return err
 	}
 
-	if err := tx.QueryRowxContext(ctx, "INSERT INTO tickets(category_id, creator_id, status, subject, source) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at, updated_at", categoryID, userID, statusOpen, subject, source).StructScan(&ticket); err != nil {
-		return Ticket{}, err
-	}
-
-	return ticket, nil
+	return nil
 }
 
 func (r *repository) GetByCreator(ctx context.Context, creatorID int) ([]Ticket, error) {
 	tickets := make([]Ticket, 0)
 
-	if err := r.db.SelectContext(ctx, &tickets, "SELECT id, category_id, creator_id, assigned_id, status, subject, source, created_at, updated_at FROM tickets WHERE creator_id = $1 ORDER BY created_at DESC", creatorID); err != nil {
+	query := `
+		SELECT * 
+		FROM tickets 
+		WHERE creator_id = $1 
+		ORDER BY created_at DESC
+	`
+
+	err := r.db.SelectContext(ctx, &tickets, query, creatorID)
+	if err != nil {
 		return tickets, err
 	}
 
@@ -47,7 +62,18 @@ func (r *repository) GetByCreator(ctx context.Context, creatorID int) ([]Ticket,
 func (r *repository) GetSupportTickets(ctx context.Context, assignedTo int) ([]Ticket, error) {
 	tickets := make([]Ticket, 0)
 
-	if err := r.db.SelectContext(ctx, &tickets, "SELECT id, category_id, creator_id, assigned_id, status, subject, source, created_at, updated_at FROM tickets WHERE status = $1 OR assigned_id = $2 ORDER BY created_at DESC", statusOpen, assignedTo); err != nil {
+	query := `
+		SELECT *
+		FROM tickets 
+		WHERE status = $1 OR assigned_id = $2 
+		ORDER BY created_at DESC
+	`
+
+	err := r.db.SelectContext(ctx, &tickets, query,
+		statusOpen,
+		assignedTo,
+	)
+	if err != nil {
 		return tickets, err
 	}
 
@@ -57,17 +83,32 @@ func (r *repository) GetSupportTickets(ctx context.Context, assignedTo int) ([]T
 func (r *repository) GetAll(ctx context.Context) ([]Ticket, error) {
 	tickets := make([]Ticket, 0)
 
-	if err := r.db.SelectContext(ctx, &tickets, "SELECT id, category_id, creator_id, assigned_id, status, subject, source, created_at, updated_at FROM tickets ORDER BY created_at DESC"); err != nil {
+	query := `
+		SELECT *
+		FROM tickets 
+		ORDER BY created_at DESC
+	`
+
+	err := r.db.SelectContext(ctx, &tickets, query)
+	if err != nil {
 		return tickets, err
 	}
 
 	return tickets, nil
 }
 
-func (r *repository) GetByID(ctx context.Context, id int) (Ticket, error) {
+func (r *repository) GetByID(ctx context.Context, ticketID uuid.UUID) (Ticket, error) {
 	var ticket Ticket
 
-	if err := r.db.GetContext(ctx, &ticket, "SELECT id, category_id, creator_id, assigned_id, status, subject, source, created_at, updated_at FROM tickets WHERE id = $1 ORDER BY created_at DESC", id); err != nil {
+	query := `
+		SELECT *
+		FROM tickets 
+		WHERE id = $1 
+		ORDER BY created_at DESC
+	`
+
+	err := r.db.GetContext(ctx, &ticket, query, ticketID)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ticket, ErrTicketNotFound
 		}
@@ -77,52 +118,88 @@ func (r *repository) GetByID(ctx context.Context, id int) (Ticket, error) {
 	return ticket, nil
 }
 
-func (r *repository) ChangeAssigned(ctx context.Context, ticketID, assignedTo int) (Ticket, error) {
+func (r *repository) ChangeAssigned(ctx context.Context, ticketID uuid.UUID, assignedTo int) (Ticket, error) {
 	var ticket Ticket
 
-	if err := r.db.QueryRowxContext(ctx, "UPDATE tickets SET assigned_id = $2, status = $3, updated_at = now() WHERE id = $1 RETURNING id, category_id, creator_id, assigned_id, status, subject, source, created_at, updated_at", ticketID, assignedTo, statusInProgress).StructScan(&ticket); err != nil {
+	query := `
+		UPDATE tickets 
+		SET assigned_id = $2, status = $3, updated_at = now() 
+		WHERE id = $1 
+		RETURNING *
+	`
+
+	err := r.db.QueryRowxContext(ctx, query,
+		ticketID,
+		assignedTo,
+		statusInProgress,
+	).StructScan(&ticket)
+	if err != nil {
 		return ticket, err
 	}
 
 	return ticket, nil
 }
 
-func (r *repository) ChangeStatus(ctx context.Context, status string, ticketID int) (Ticket, error) {
+func (r *repository) ChangeStatus(ctx context.Context, status string, ticketID uuid.UUID) (Ticket, error) {
 	var ticket Ticket
 
-	if err := r.db.QueryRowxContext(ctx, "UPDATE tickets SET status = $2, updated_at = now() WHERE id = $1 RETURNING id, category_id, creator_id, assigned_id, status, subject, source, created_at, updated_at", ticketID, status).StructScan(&ticket); err != nil {
+	query := `
+		UPDATE tickets 
+		SET status = $2, updated_at = now() 
+		WHERE id = $1 
+		RETURNING *
+	`
+
+	err := r.db.QueryRowxContext(ctx, query,
+		ticketID,
+		status,
+	).StructScan(&ticket)
+	if err != nil {
 		return ticket, err
 	}
 
 	return ticket, nil
 }
 
-func (r *repository) CreateMessage(ctx context.Context, tx *sqlx.Tx, ticketID, senderID int, senderType, content string) (Message, error) {
-	message := Message{
-		TicketID:   ticketID,
-		SenderID:   senderID,
-		SenderType: senderType,
-		Content:    content,
-	}
+func (r *repository) CreateMessage(ctx context.Context, tx *sqlx.Tx, message *Message) error {
+	query := `
+		INSERT INTO messages(id, ticket_id, sender_id, sender_type, content) 
+		SELECT $1, $2, $3, $4, $5 
+		FROM tickets 
+		WHERE id = $2 AND status != 'closed' 
+		RETURNING created_at
+	`
 
-	if err := tx.QueryRowxContext(ctx, "INSERT INTO messages(ticket_id, sender_id, sender_type, content) SELECT $1, $2, $3, $4 FROM tickets WHERE id = $1 AND status != 'closed' RETURNING id, created_at", ticketID, senderID, senderType, content).StructScan(&message); err != nil {
+	err := tx.QueryRowxContext(ctx, query,
+		message.ID,
+		message.TicketID,
+		message.SenderID,
+		message.SenderType,
+		message.Content,
+	).StructScan(message)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return Message{}, ErrClosedTicket
+			return ErrClosedTicket
 		}
-		return Message{}, err
+		return err
 	}
 
-	return message, nil
+	return nil
 }
 
-func (r *repository) GetMessages(ctx context.Context, ticketID int) ([]Message, error) {
+func (r *repository) GetMessages(ctx context.Context, ticketID uuid.UUID) ([]Message, error) {
 	messages := make([]Message, 0)
 
-	if err := r.db.SelectContext(ctx, &messages, "SELECT id, ticket_id, sender_id, sender_type, content, created_at FROM messages WHERE ticket_id = $1 ORDER BY created_at", ticketID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return messages, nil
-		}
-		return nil, err
+	query := `
+		SELECT * 
+		FROM messages 
+		WHERE ticket_id = $1 
+		ORDER BY created_at
+	`
+
+	err := r.db.SelectContext(ctx, &messages, query, ticketID)
+	if err != nil {
+		return messages, err
 	}
 
 	return messages, nil

@@ -3,19 +3,19 @@ package tickets
 import (
 	"context"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type Service interface {
-	Create(ctx context.Context, userID, categoryID int, role, source, subject, message string) (Ticket, error)
+	Create(ctx context.Context, userID int, role string, req CreateTicketRequest) (*Ticket, error)
 	Get(ctx context.Context, role string, userID int) ([]Ticket, error)
-	GetByID(ctx context.Context, role string, userID, ticketID int) (Ticket, error)
-	ChangeAssigned(ctx context.Context, role string, userID, ticketID, assignedTo int) (Ticket, error)
-	ChangeStatus(ctx context.Context, role, status string, ticketID, userID int) (Ticket, error)
-	CreateMessage(ctx context.Context, ticketID, senderID int, senderType, content string) (Message, error)
-	GetMessages(ctx context.Context, role string, ticketID, userID int) ([]Message, error)
+	GetByID(ctx context.Context, userID int, role string, ticketID uuid.UUID) (Ticket, error)
+	ChangeAssigned(ctx context.Context, userID int, role string, ticketID uuid.UUID, assignedTo int) (Ticket, error)
+	ChangeStatus(ctx context.Context, userID int, role string, ticketID uuid.UUID, status string) (Ticket, error)
+	CreateMessage(ctx context.Context, ticketID uuid.UUID, senderID int, senderType, content string) (*Message, error)
+	GetMessages(ctx context.Context, userID int, role string, ticketID uuid.UUID) ([]Message, error)
 }
 
 type handler struct {
@@ -36,7 +36,7 @@ func (h *handler) Create(c *gin.Context) {
 		return
 	}
 
-	ticket, err := h.service.Create(c.Request.Context(), c.GetInt("userID"), req.CategoryID, c.GetString("role"), req.Source, req.Subject, req.Message)
+	ticket, err := h.service.Create(c.Request.Context(), c.GetInt("userID"), c.GetString("role"), req)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -62,13 +62,13 @@ func (h *handler) GetByID(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt("userID")
 
-	ticketID, err := strconv.Atoi(c.Param("id"))
+	ticketID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid ticketID"})
 		return
 	}
 
-	ticket, err := h.service.GetByID(c.Request.Context(), role, userID, ticketID)
+	ticket, err := h.service.GetByID(c.Request.Context(), userID, role, ticketID)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -85,7 +85,7 @@ func (h *handler) ChangeAssigned(c *gin.Context) {
 		return
 	}
 
-	ticketID, err := strconv.Atoi(c.Param("id"))
+	ticketID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid ticketID"})
 		return
@@ -94,7 +94,7 @@ func (h *handler) ChangeAssigned(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt("userID")
 
-	ticket, err := h.service.ChangeAssigned(c.Request.Context(), role, userID, ticketID, req.AssignedTo)
+	ticket, err := h.service.ChangeAssigned(c.Request.Context(), userID, role, ticketID, req.AssignedTo)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -111,7 +111,7 @@ func (h *handler) ChangeStatus(c *gin.Context) {
 		return
 	}
 
-	ticketID, err := strconv.Atoi(c.Param("id"))
+	ticketID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid ticketID"})
 		return
@@ -120,7 +120,7 @@ func (h *handler) ChangeStatus(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt("userID")
 
-	ticket, err := h.service.ChangeStatus(c.Request.Context(), role, req.Status, ticketID, userID)
+	ticket, err := h.service.ChangeStatus(c.Request.Context(), userID, role, ticketID, req.Status)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -137,7 +137,7 @@ func (h *handler) CreateMessage(c *gin.Context) {
 		return
 	}
 
-	ticketID, err := strconv.Atoi(c.Param("id"))
+	ticketID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid ticketID"})
 		return
@@ -159,13 +159,13 @@ func (h *handler) GetMessages(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt("userID")
 
-	ticketID, err := strconv.Atoi(c.Param("id"))
+	ticketID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid ticketID"})
 		return
 	}
 
-	messages, err := h.service.GetMessages(c.Request.Context(), role, ticketID, userID)
+	messages, err := h.service.GetMessages(c.Request.Context(), userID, role, ticketID)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

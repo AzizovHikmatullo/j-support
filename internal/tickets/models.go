@@ -3,10 +3,12 @@ package tickets
 import (
 	"errors"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Ticket struct {
-	ID         int       `json:"id" db:"id"`
+	ID         uuid.UUID `json:"id" db:"id"`
 	CategoryID int       `json:"category_id" db:"category_id"`
 	CreatorID  int       `json:"creator_id" db:"creator_id"`
 	AssignedTo *int      `json:"assigned_to" db:"assigned_id"`
@@ -19,8 +21,8 @@ type Ticket struct {
 }
 
 type Message struct {
-	ID         int64     `json:"id" db:"id"`
-	TicketID   int       `json:"ticket_id" db:"ticket_id"`
+	ID         uuid.UUID `json:"id" db:"id"`
+	TicketID   uuid.UUID `json:"ticket_id" db:"ticket_id"`
 	SenderID   int       `json:"sender_id" db:"sender_id"`
 	SenderType string    `json:"sender_type" db:"sender_type"`
 	Content    string    `json:"content" db:"content"`
@@ -68,3 +70,25 @@ const (
 	sourceMobile  = "mobile"
 	sourceService = "service"
 )
+
+func NewTicket(creatorID int, req CreateTicketRequest) *Ticket {
+	uuid.Must(uuid.NewV7())
+	return &Ticket{
+		ID:         uuid.Must(uuid.NewV7()),
+		CategoryID: req.CategoryID,
+		CreatorID:  creatorID,
+		Status:     statusOpen,
+		Subject:    req.Subject,
+		Source:     req.Source,
+	}
+}
+
+func NewMessage(ticketID uuid.UUID, senderID int, senderType, content string) *Message {
+	return &Message{
+		ID:         uuid.Must(uuid.NewV7()),
+		TicketID:   ticketID,
+		SenderID:   senderID,
+		SenderType: senderType,
+		Content:    content,
+	}
+}

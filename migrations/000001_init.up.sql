@@ -8,7 +8,7 @@ create table categories (
 );
 
 create table tickets (
-    id serial primary key,
+    id uuid primary key,
     category_id integer not null references categories(id),
     creator_id integer not null,
     assigned_id integer,
@@ -19,8 +19,8 @@ create table tickets (
     updated_at timestamp not null default now()
 );
 create table messages (
-    id bigserial primary key,
-    ticket_id integer not null references tickets(id),
+    id uuid primary key,
+    ticket_id uuid not null references tickets(id),
     sender_id integer not null,
     sender_type text not null,
     content text not null,
