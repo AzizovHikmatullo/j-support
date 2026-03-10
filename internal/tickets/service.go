@@ -102,6 +102,10 @@ func (s *service) GetByID(ctx context.Context, userID int, role string, ticketID
 		return Ticket{}, err
 	}
 
+	if err := checkAccess(userID, role, ticket); err != nil {
+		return Ticket{}, err
+	}
+
 	messages, err := s.repo.GetMessages(ctx, ticketID)
 	if err != nil {
 		return Ticket{}, err
@@ -109,25 +113,7 @@ func (s *service) GetByID(ctx context.Context, userID int, role string, ticketID
 
 	ticket.Messages = messages
 
-	if role == "user" && ticket.CreatorID == userID {
-		return ticket, nil
-	}
-
-	if role == "support" && ticket.Status == statusOpen {
-		return ticket, nil
-	}
-
-	if role == "support" && ticket.AssignedTo != nil {
-		if *ticket.AssignedTo == userID {
-			return ticket, nil
-		}
-	}
-
-	if role == "admin" {
-		return ticket, nil
-	}
-
-	return Ticket{}, ErrForbidden
+	return ticket, nil
 }
 
 func (s *service) ChangeAssigned(ctx context.Context, userID int, role string, ticketID uuid.UUID, assignedTo int) (Ticket, error) {
@@ -217,7 +203,7 @@ func (s *service) CreateMessage(ctx context.Context, ticketID uuid.UUID, senderI
 		return nil, err
 	}
 
-	if err = s.publisher.PublishToTicket(ticket.ID, event); err != nil {
+	if err := s.publisher.PublishToTicket(ticket.ID, event); err != nil {
 		return nil, ErrPublishFailed
 	}
 
@@ -248,5 +234,27 @@ func checkSource(source string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func checkAccess(userID int, role string, ticket Ticket) error {
+	switch role {
+	case "admin":
+		return nil
+	case "user":
+		if ticket.CreatorID != userID {
+			return ErrForbidden
+		}
+		return nil
+	case "support":
+		if ticket.Status == statusOpen {
+			return nil
+		}
+		if ticket.AssignedTo != nil && *ticket.AssignedTo == userID {
+			return nil
+		}
+		return ErrForbidden
+	default:
+		return ErrForbidden
 	}
 }
