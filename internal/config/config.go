@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -11,7 +12,6 @@ type Config struct {
 	Server struct {
 		Port string
 	}
-
 	Database struct {
 		Host     string
 		Port     string
@@ -21,6 +21,9 @@ type Config struct {
 	}
 	JWT struct {
 		Secret string
+	}
+	CORS struct {
+		AllowedOrigins []string
 	}
 }
 
@@ -40,6 +43,8 @@ func LoadConfig() (*Config, error) {
 	cfg.Database.Password = os.Getenv("POSTGRES_PASSWORD")
 
 	cfg.JWT.Secret = os.Getenv("JWT_SECRET")
+
+	cfg.CORS.AllowedOrigins = strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), ",")
 
 	return cfg, nil
 }
