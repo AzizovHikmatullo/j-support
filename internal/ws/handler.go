@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -22,14 +23,18 @@ func NewWSHandler(hub *Hub) *WSHandler {
 }
 
 func (h *WSHandler) ServeTicketWS(c *gin.Context) {
-	ticketIDStr := c.Param("id")
+	ticketID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid ticket id"})
+		return
+	}
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return
 	}
 
-	room := "ticket:" + ticketIDStr
+	room := "ticket:" + ticketID.String()
 
 	client := NewClient(conn, h.hub, room)
 	h.hub.Join(room, client)

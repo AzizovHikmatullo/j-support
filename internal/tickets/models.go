@@ -72,7 +72,6 @@ const (
 )
 
 func NewTicket(creatorID int, req CreateTicketRequest) *Ticket {
-	uuid.Must(uuid.NewV7())
 	return &Ticket{
 		ID:         uuid.Must(uuid.NewV7()),
 		CategoryID: req.CategoryID,

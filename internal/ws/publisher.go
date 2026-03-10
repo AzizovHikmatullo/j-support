@@ -19,6 +19,6 @@ func NewPublisher(hub *Hub) *WebSocketPublisher {
 }
 
 func (p *WebSocketPublisher) PublishToTicket(ticketID uuid.UUID, event Event) error {
-	room := fmt.Sprintf("ticket:%d", ticketID)
+	room := fmt.Sprintf("ticket:%s", ticketID.String())
 	return p.hub.Broadcast(room, event)
 }
