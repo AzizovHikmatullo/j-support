@@ -1,6 +1,11 @@
 package app
 
 import (
+	"github.com/AzizovHikmatullo/j-support/internal/channel"
+	channelApp "github.com/AzizovHikmatullo/j-support/internal/channel/app"
+	channelTelegram "github.com/AzizovHikmatullo/j-support/internal/channel/telegram"
+	channelWeb "github.com/AzizovHikmatullo/j-support/internal/channel/web"
+	"github.com/AzizovHikmatullo/j-support/internal/contacts"
 	"log/slog"
 	"net/http"
 	"time"
@@ -31,6 +36,10 @@ func NewApp(cfg *config.Config, logger *slog.Logger, db *sqlx.DB, hub *ws.Hub) *
 	srv := &http.Server{
 		Addr:    ":" + cfg.Server.Port,
 		Handler: router,
+
+		ReadTimeout:  60 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
 	return &App{
@@ -57,7 +66,7 @@ func (a *App) Run() {
 
 func (a *App) InitRoutes() {
 	a.router.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"http://localhost:5500", "http://127.0.0.1:5500"},
+		AllowOrigins: a.cfg.CORS.AllowedOrigins,
 		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders: []string{
 			"Origin",
@@ -82,24 +91,39 @@ func (a *App) InitRoutes() {
 	{
 		categoriesRoutes.POST("", middleware.RequireRole("admin"), categoriesHandler.Create)
 		categoriesRoutes.GET("", middleware.RequireRole("admin", "support", "user"), categoriesHandler.Get)
-		categoriesRoutes.PUT("/:id", middleware.RequireRole("admin"), categoriesHandler.Update)
+		categoriesRoutes.PATCH("/:id", middleware.RequireRole("admin"), categoriesHandler.Update)
 	}
+
+	contactRepo := contacts.NewRepository(a.db)
+	contactService := contacts.NewService(contactRepo)
+
+	registry := channel.NewRegistry()
+	registry.Register(channelApp.New(contactService))
+	registry.Register(channelWeb.New(contactService))
+	registry.Register(channelTelegram.New(contactService))
 
 	ticketsRepo := tickets.NewRepository(a.db)
 	ticketsService := tickets.NewService(ticketsRepo, categoriesRepo, publisher)
-	ticketsHandler := tickets.NewHandler(ticketsService)
+	ticketsHandler := tickets.NewHandler(ticketsService, registry)
 
-	ticketsRoutes := a.router.Group("/tickets")
-	ticketsRoutes.Use(middleware.AuthMiddleware(a.cfg.JWT.Secret))
+	clientRoutes := a.router.Group("/tickets")
+	clientRoutes.Use(middleware.ChannelIdentityMiddleware(a.cfg.JWT.Secret))
 	{
-		ticketsRoutes.GET("", middleware.RequireRole("user", "support", "admin"), ticketsHandler.Get)
-		ticketsRoutes.POST("", middleware.RequireRole("user"), ticketsHandler.Create)
-		ticketsRoutes.GET(":id", middleware.RequireRole("user", "support", "admin"), ticketsHandler.GetByID)
-		ticketsRoutes.PATCH(":id/assign", middleware.RequireRole("support", "admin"), ticketsHandler.ChangeAssigned)
-		ticketsRoutes.PATCH(":id/status", middleware.RequireRole("user", "support", "admin"), ticketsHandler.ChangeStatus)
+		clientRoutes.POST("", middleware.RequireRole("user"), ticketsHandler.Create)
+		clientRoutes.GET(":id", middleware.RequireRole("user"), ticketsHandler.GetByID)
+		clientRoutes.POST(":id/messages", middleware.RequireRole("user"), ticketsHandler.CreateMessage)
+		clientRoutes.GET(":id/messages", middleware.RequireRole("user"), ticketsHandler.GetMessages)
+	}
 
-		ticketsRoutes.POST(":id/messages", middleware.RequireRole("user", "support", "admin"), ticketsHandler.CreateMessage)
-		ticketsRoutes.GET(":id/messages", middleware.RequireRole("user", "support", "admin"), ticketsHandler.GetMessages)
+	supportRoutes := a.router.Group("/support/tickets")
+	supportRoutes.Use(middleware.AuthMiddleware(a.cfg.JWT.Secret))
+	{
+		supportRoutes.GET("", middleware.RequireRole("support", "admin"), ticketsHandler.Get)
+		supportRoutes.GET(":id", middleware.RequireRole("support", "admin"), ticketsHandler.GetByID)
+		supportRoutes.PATCH(":id/assign", middleware.RequireRole("support", "admin"), ticketsHandler.ChangeAssigned)
+		supportRoutes.PATCH(":id/status", middleware.RequireRole("support", "admin"), ticketsHandler.ChangeStatus)
+		supportRoutes.GET(":id/messages", middleware.RequireRole("support", "admin"), ticketsHandler.GetMessages)
+		supportRoutes.POST(":id/messages", middleware.RequireRole("support", "admin"), ticketsHandler.CreateMessage)
 	}
 
 	wsHandler := ws.NewWSHandler(a.hub)
