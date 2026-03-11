@@ -11,7 +11,7 @@ import (
 
 type Repository interface {
 	Create(ctx context.Context, tx *sqlx.Tx, ticket *Ticket) error
-	GetByCreator(ctx context.Context, creatorID int) ([]Ticket, error)
+	GetByContact(ctx context.Context, creatorID int) ([]Ticket, error)
 	GetSupportTickets(ctx context.Context, assignedTo int) ([]Ticket, error)
 	GetAll(ctx context.Context) ([]Ticket, error)
 	GetByID(ctx context.Context, ticketID uuid.UUID) (Ticket, error)
@@ -37,7 +37,7 @@ func NewService(repo Repository, categoryRepo categories.Repository, pub ws.Publ
 	}
 }
 
-func (s *service) Create(ctx context.Context, userID int, role string, req CreateTicketRequest) (*Ticket, error) {
+func (s *service) Create(ctx context.Context, contactID int, role string, source string, req CreateTicketRequest) (*Ticket, error) {
 	tx, err := s.repo.BeginTxx(ctx)
 	if err != nil {
 		return nil, ErrUndefined
@@ -58,18 +58,14 @@ func (s *service) Create(ctx context.Context, userID int, role string, req Creat
 		return nil, ErrCategoryDisabled
 	}
 
-	if !checkSource(req.Source) {
-		return nil, ErrInvalidSource
-	}
-
-	ticket := NewTicket(userID, req)
+	ticket := NewTicket(contactID, source, req)
 
 	err = s.repo.Create(ctx, tx, ticket)
 	if err != nil {
 		return nil, err
 	}
 
-	message := NewMessage(ticket.ID, userID, role, req.Message)
+	message := NewMessage(ticket.ID, contactID, role, req.Message)
 
 	err = s.repo.CreateMessage(ctx, tx, message)
 	if err != nil {
@@ -86,7 +82,7 @@ func (s *service) Create(ctx context.Context, userID int, role string, req Creat
 func (s *service) Get(ctx context.Context, role string, userID int) ([]Ticket, error) {
 	switch role {
 	case "user":
-		return s.repo.GetByCreator(ctx, userID)
+		return s.repo.GetByContact(ctx, userID)
 	case "support":
 		return s.repo.GetSupportTickets(ctx, userID)
 	case "admin":
@@ -104,6 +100,26 @@ func (s *service) GetByID(ctx context.Context, userID int, role string, ticketID
 
 	if err := checkAccess(userID, role, ticket); err != nil {
 		return Ticket{}, err
+	}
+
+	messages, err := s.repo.GetMessages(ctx, ticketID)
+	if err != nil {
+		return Ticket{}, err
+	}
+
+	ticket.Messages = messages
+
+	return ticket, nil
+}
+
+func (s *service) GetMine(ctx context.Context, contactID int, ticketID uuid.UUID) (Ticket, error) {
+	ticket, err := s.repo.GetByID(ctx, ticketID)
+	if err != nil {
+		return Ticket{}, err
+	}
+
+	if ticket.ContactID != contactID {
+		return Ticket{}, ErrForbidden
 	}
 
 	messages, err := s.repo.GetMessages(ctx, ticketID)
@@ -143,7 +159,7 @@ func (s *service) ChangeStatus(ctx context.Context, userID int, role string, tic
 		return Ticket{}, err
 	}
 
-	if role == "user" && ticket.CreatorID != userID {
+	if role == "user" && (ticket.ContactID != userID || status != statusClosed) {
 		return Ticket{}, ErrForbidden
 	}
 
@@ -173,7 +189,7 @@ func (s *service) CreateMessage(ctx context.Context, ticketID uuid.UUID, senderI
 		return nil, err
 	}
 
-	if senderType == "user" && ticket.CreatorID != senderID {
+	if senderType == "user" && ticket.ContactID != senderID {
 		return nil, ErrForbidden
 	}
 
@@ -216,7 +232,7 @@ func (s *service) GetMessages(ctx context.Context, userID int, role string, tick
 		return nil, err
 	}
 
-	if role == "user" && ticket.CreatorID != userID {
+	if role == "user" && ticket.ContactID != userID {
 		return nil, ErrForbidden
 	}
 
@@ -228,21 +244,12 @@ func (s *service) GetMessages(ctx context.Context, userID int, role string, tick
 	return messages, nil
 }
 
-func checkSource(source string) bool {
-	switch source {
-	case sourceWeb, sourceMobile, sourceService:
-		return true
-	default:
-		return false
-	}
-}
-
 func checkAccess(userID int, role string, ticket Ticket) error {
 	switch role {
 	case "admin":
 		return nil
 	case "user":
-		if ticket.CreatorID != userID {
+		if ticket.ContactID != userID {
 			return ErrForbidden
 		}
 		return nil

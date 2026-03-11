@@ -4,14 +4,18 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/AzizovHikmatullo/j-support/internal/channel"
+	"github.com/AzizovHikmatullo/j-support/internal/contacts"
+	"github.com/AzizovHikmatullo/j-support/internal/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type Service interface {
-	Create(ctx context.Context, userID int, role string, req CreateTicketRequest) (*Ticket, error)
+	Create(ctx context.Context, contactID int, role string, source string, req CreateTicketRequest) (*Ticket, error)
 	Get(ctx context.Context, role string, userID int) ([]Ticket, error)
 	GetByID(ctx context.Context, userID int, role string, ticketID uuid.UUID) (Ticket, error)
+	GetMine(ctx context.Context, contactID int, ticketID uuid.UUID) (Ticket, error)
 	ChangeAssigned(ctx context.Context, userID int, role string, ticketID uuid.UUID, assignedTo int) (Ticket, error)
 	ChangeStatus(ctx context.Context, userID int, role string, ticketID uuid.UUID, status string) (Ticket, error)
 	CreateMessage(ctx context.Context, ticketID uuid.UUID, senderID int, senderType, content string) (*Message, error)
@@ -19,14 +23,18 @@ type Service interface {
 }
 
 type handler struct {
-	service Service
+	service  Service
+	registry *channel.Registry
 }
 
-func NewHandler(service Service) *handler {
+func NewHandler(service Service, registry *channel.Registry) *handler {
 	return &handler{
-		service: service,
+		service:  service,
+		registry: registry,
 	}
 }
+
+// CLIENT HANDLERS
 
 func (h *handler) Create(c *gin.Context) {
 	var req CreateTicketRequest
@@ -36,7 +44,18 @@ func (h *handler) Create(c *gin.Context) {
 		return
 	}
 
-	ticket, err := h.service.Create(c.Request.Context(), c.GetInt("userID"), c.GetString("role"), req)
+	identity, ok := middleware.GetIdentity(c)
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": ErrUnauthorized.Error()})
+	}
+
+	contact, err := h.resolveContact(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	ticket, err := h.service.Create(c.Request.Context(), contact.ID, userRole, identity.ChannelType, req)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -44,6 +63,95 @@ func (h *handler) Create(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, ticket)
 }
+
+func (h *handler) GetMine(c *gin.Context) {
+	ticketID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid ticketID"})
+		return
+	}
+
+	contact, err := h.resolveContact(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	ticket, err := h.service.GetMine(c.Request.Context(), contact.ID, ticketID)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, ticket)
+}
+
+func (h *handler) CreateMessageByUser(c *gin.Context) {
+	var req CreateMessageRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+		return
+	}
+
+	ticketID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid ticketID"})
+		return
+	}
+
+	contact, err := h.resolveContact(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	message, err := h.service.CreateMessage(c.Request.Context(), ticketID, contact.ID, userRole, req.Content)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, message)
+}
+
+func (h *handler) GetMessagesForUser(c *gin.Context) {
+	ticketID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid ticketID"})
+		return
+	}
+
+	contact, err := h.resolveContact(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	messages, err := h.service.GetMessages(c.Request.Context(), contact.ID, userRole, ticketID)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, messages)
+}
+
+func (h *handler) resolveContact(c *gin.Context) (*contacts.Contact, error) {
+	identity, ok := middleware.GetIdentity(c)
+	if !ok {
+		return nil, ErrUnauthorized
+	}
+
+	ch, err := h.registry.Get(identity.ChannelType)
+	if err != nil {
+		return nil, ErrUnknownChannel
+	}
+
+	return ch.ResolveContact(c.Request.Context(), identity.ID)
+}
+
+// SUPPORT HANDLERS
 
 func (h *handler) Get(c *gin.Context) {
 	role := c.GetString("role")
@@ -129,7 +237,7 @@ func (h *handler) ChangeStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, ticket)
 }
 
-func (h *handler) CreateMessage(c *gin.Context) {
+func (h *handler) CreateMessageBySupport(c *gin.Context) {
 	var req CreateMessageRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -155,7 +263,7 @@ func (h *handler) CreateMessage(c *gin.Context) {
 	c.JSON(http.StatusOK, message)
 }
 
-func (h *handler) GetMessages(c *gin.Context) {
+func (h *handler) GetMessagesForSupport(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt("userID")
 

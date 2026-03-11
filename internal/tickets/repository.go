@@ -21,7 +21,7 @@ func NewRepository(db *sqlx.DB) Repository {
 
 func (r *repository) Create(ctx context.Context, tx *sqlx.Tx, ticket *Ticket) error {
 	query := `
- 		INSERT INTO tickets(id, category_id, creator_id, status, subject, source) 
+ 		INSERT INTO tickets(id, category_id, contact_id, status, subject, source) 
  		VALUES ($1, $2, $3, $4, $5, $6) 
  		RETURNING created_at, updated_at
 	`
@@ -29,7 +29,7 @@ func (r *repository) Create(ctx context.Context, tx *sqlx.Tx, ticket *Ticket) er
 	err := tx.QueryRowxContext(ctx, query,
 		ticket.ID,
 		ticket.CategoryID,
-		ticket.CreatorID,
+		ticket.ContactID,
 		ticket.Status,
 		ticket.Subject,
 		ticket.Source,
@@ -41,13 +41,13 @@ func (r *repository) Create(ctx context.Context, tx *sqlx.Tx, ticket *Ticket) er
 	return nil
 }
 
-func (r *repository) GetByCreator(ctx context.Context, creatorID int) ([]Ticket, error) {
+func (r *repository) GetByContact(ctx context.Context, creatorID int) ([]Ticket, error) {
 	tickets := make([]Ticket, 0)
 
 	query := `
 		SELECT * 
 		FROM tickets 
-		WHERE creator_id = $1 
+		WHERE contact_id = $1 
 		ORDER BY created_at DESC
 	`
 

@@ -10,7 +10,7 @@ import (
 type Ticket struct {
 	ID         uuid.UUID `json:"id" db:"id"`
 	CategoryID int       `json:"category_id" db:"category_id"`
-	CreatorID  int       `json:"creator_id" db:"creator_id"`
+	ContactID  int       `json:"creator_id" db:"contact_id"`
 	AssignedTo *int      `json:"assigned_to" db:"assigned_id"`
 	Status     string    `json:"status" db:"status"`
 	Subject    string    `json:"subject" db:"subject"`
@@ -33,7 +33,6 @@ type CreateTicketRequest struct {
 	CategoryID int    `json:"category_id" binding:"required"`
 	Message    string `json:"message" binding:"required"`
 	Subject    string `json:"subject" binding:"required"`
-	Source     string `json:"source" binding:"required"`
 }
 
 type ChangeAssignedRequest struct {
@@ -59,6 +58,8 @@ var (
 	ErrClosedTicket       = errors.New("cannot write to closed ticket")
 	ErrSupportCannotWrite = errors.New("you cannot write to this ticket")
 	ErrPublishFailed      = errors.New("failed to publish message")
+	ErrUnauthorized       = errors.New("unauthorized")
+	ErrUnknownChannel     = errors.New("unknown request channel")
 )
 
 const (
@@ -66,19 +67,17 @@ const (
 	statusInProgress = "in_progress"
 	statusClosed     = "closed"
 
-	sourceWeb     = "web"
-	sourceMobile  = "mobile"
-	sourceService = "service"
+	userRole = "user"
 )
 
-func NewTicket(creatorID int, req CreateTicketRequest) *Ticket {
+func NewTicket(contactID int, source string, req CreateTicketRequest) *Ticket {
 	return &Ticket{
 		ID:         uuid.Must(uuid.NewV7()),
 		CategoryID: req.CategoryID,
-		CreatorID:  creatorID,
+		ContactID:  contactID,
 		Status:     statusOpen,
 		Subject:    req.Subject,
-		Source:     req.Source,
+		Source:     source,
 	}
 }
 
