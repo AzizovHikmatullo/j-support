@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -61,7 +60,7 @@ func (r *postgresRepo) GetByExternalID(ctx context.Context, externalID string) (
 	return contact, nil
 }
 
-func (r *postgresRepo) GetByID(ctx context.Context, id uuid.UUID) (Contact, error) {
+func (r *postgresRepo) GetByID(ctx context.Context, id int) (Contact, error) {
 	var contact Contact
 
 	query := `
@@ -83,8 +82,6 @@ func (r *postgresRepo) GetByID(ctx context.Context, id uuid.UUID) (Contact, erro
 }
 
 func (r *postgresRepo) Create(ctx context.Context, contact *Contact) error {
-	contact.ID = uuid.Must(uuid.NewV7())
-
 	query := `
 		INSERT INTO contacts (id, user_id, external_id, name, phone) 
 		VALUES ($1, $2, $3, $4, $5) 
@@ -105,7 +102,7 @@ func (r *postgresRepo) Create(ctx context.Context, contact *Contact) error {
 	return nil
 }
 
-func (r *postgresRepo) Update(ctx context.Context, id uuid.UUID, name, phone string) (Contact, error) {
+func (r *postgresRepo) Update(ctx context.Context, id int, name, phone string) (Contact, error) {
 	var contact Contact
 
 	query := `

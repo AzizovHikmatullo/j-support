@@ -3,16 +3,14 @@ package contacts
 import (
 	"context"
 	"errors"
-
-	"github.com/google/uuid"
 )
 
 type Repository interface {
 	GetByUserID(ctx context.Context, userID string) (Contact, error)
 	GetByExternalID(ctx context.Context, externalID string) (Contact, error)
-	GetByID(ctx context.Context, id uuid.UUID) (Contact, error)
+	GetByID(ctx context.Context, id int) (Contact, error)
 	Create(ctx context.Context, contact *Contact) error
-	Update(ctx context.Context, id uuid.UUID, name, phone string) (Contact, error)
+	Update(ctx context.Context, id int, name, phone string) (Contact, error)
 }
 
 type service struct {
@@ -67,7 +65,7 @@ func (s *service) resolveByExternalID(ctx context.Context, externalID *string) (
 	return newContact, err
 }
 
-func (s *service) Update(ctx context.Context, id uuid.UUID, name, phone string) (Contact, error) {
+func (s *service) Update(ctx context.Context, id int, name, phone string) (Contact, error) {
 	if name == "" {
 		return Contact{}, ErrInvalidName
 	}
@@ -77,4 +75,14 @@ func (s *service) Update(ctx context.Context, id uuid.UUID, name, phone string) 
 	}
 
 	return s.repo.Update(ctx, id, name, phone)
+}
+
+func (s *service) InitContact(ctx context.Context, externalID, name, phone string) error {
+	contact, err := s.Resolve(ctx, nil, &externalID)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.repo.Update(ctx, contact.ID, name, phone)
+	return err
 }

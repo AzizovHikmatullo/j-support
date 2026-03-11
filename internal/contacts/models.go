@@ -3,8 +3,6 @@ package contacts
 import (
 	"errors"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 var (
@@ -15,7 +13,7 @@ var (
 )
 
 type Contact struct {
-	ID         uuid.UUID `db:"id" json:"id"`
+	ID         int       `db:"id" json:"id"`
 	UserID     *string   `db:"user_id" json:"user_id,omitempty"`
 	ExternalID *string   `db:"external_id" json:"external_id,omitempty"`
 	Name       *string   `db:"name" json:"name,omitempty"`
