@@ -1,17 +1,17 @@
 package app
 
 import (
-	"github.com/AzizovHikmatullo/j-support/internal/channel"
-	channelApp "github.com/AzizovHikmatullo/j-support/internal/channel/app"
-	channelTelegram "github.com/AzizovHikmatullo/j-support/internal/channel/telegram"
-	channelWeb "github.com/AzizovHikmatullo/j-support/internal/channel/web"
-	"github.com/AzizovHikmatullo/j-support/internal/contacts"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/AzizovHikmatullo/j-support/internal/categories"
+	"github.com/AzizovHikmatullo/j-support/internal/channel"
+	channelApp "github.com/AzizovHikmatullo/j-support/internal/channel/app"
+	channelTelegram "github.com/AzizovHikmatullo/j-support/internal/channel/telegram"
+	channelWeb "github.com/AzizovHikmatullo/j-support/internal/channel/web"
 	"github.com/AzizovHikmatullo/j-support/internal/config"
+	"github.com/AzizovHikmatullo/j-support/internal/contacts"
 	"github.com/AzizovHikmatullo/j-support/internal/middleware"
 	"github.com/AzizovHikmatullo/j-support/internal/tickets"
 	"github.com/AzizovHikmatullo/j-support/internal/ws"
@@ -110,9 +110,9 @@ func (a *App) InitRoutes() {
 	clientRoutes.Use(middleware.ChannelIdentityMiddleware(a.cfg.JWT.Secret))
 	{
 		clientRoutes.POST("", middleware.RequireRole("user"), ticketsHandler.Create)
-		clientRoutes.GET(":id", middleware.RequireRole("user"), ticketsHandler.GetByID)
-		clientRoutes.POST(":id/messages", middleware.RequireRole("user"), ticketsHandler.CreateMessage)
-		clientRoutes.GET(":id/messages", middleware.RequireRole("user"), ticketsHandler.GetMessages)
+		clientRoutes.GET(":id", middleware.RequireRole("user"), ticketsHandler.GetMine)
+		clientRoutes.POST(":id/messages", middleware.RequireRole("user"), ticketsHandler.CreateMessageByUser)
+		clientRoutes.GET(":id/messages", middleware.RequireRole("user"), ticketsHandler.GetMessagesForUser)
 	}
 
 	supportRoutes := a.router.Group("/support/tickets")
@@ -122,15 +122,21 @@ func (a *App) InitRoutes() {
 		supportRoutes.GET(":id", middleware.RequireRole("support", "admin"), ticketsHandler.GetByID)
 		supportRoutes.PATCH(":id/assign", middleware.RequireRole("support", "admin"), ticketsHandler.ChangeAssigned)
 		supportRoutes.PATCH(":id/status", middleware.RequireRole("support", "admin"), ticketsHandler.ChangeStatus)
-		supportRoutes.GET(":id/messages", middleware.RequireRole("support", "admin"), ticketsHandler.GetMessages)
-		supportRoutes.POST(":id/messages", middleware.RequireRole("support", "admin"), ticketsHandler.CreateMessage)
+		supportRoutes.POST(":id/messages", middleware.RequireRole("support", "admin"), ticketsHandler.CreateMessageBySupport)
+		supportRoutes.GET(":id/messages", middleware.RequireRole("support", "admin"), ticketsHandler.GetMessagesForSupport)
 	}
 
 	wsHandler := ws.NewWSHandler(a.hub)
-
 	wsRoutes := a.router.Group("/ws")
 	{
 		wsRoutes.GET("/tickets/:id", wsHandler.ServeTicketWS)
+	}
+
+	initHandler := channel.NewHandler(contactService)
+	initRoutes := a.router.Group("/init")
+	{
+		initRoutes.POST("/web", initHandler.InitWeb)
+		initRoutes.POST("/telegram", initHandler.InitTelegram)
 	}
 
 	a.logger.Info("All routes created")
