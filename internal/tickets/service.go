@@ -150,7 +150,7 @@ func (s *service) ChangeAssigned(ctx context.Context, userID int, role string, t
 }
 
 func (s *service) ChangeStatus(ctx context.Context, userID int, role string, ticketID uuid.UUID, status string) (Ticket, error) {
-	if status != statusOpen && status != statusInProgress && status != statusClosed {
+	if !checkStatus(status) {
 		return Ticket{}, ErrInvalidStatus
 	}
 
@@ -254,7 +254,7 @@ func checkAccess(userID int, role string, ticket Ticket) error {
 		}
 		return nil
 	case "support":
-		if ticket.Status == statusOpen {
+		if ticket.Status == statusOpen || ticket.Status == statusPending {
 			return nil
 		}
 		if ticket.AssignedTo != nil && *ticket.AssignedTo == userID {
@@ -264,4 +264,8 @@ func checkAccess(userID int, role string, ticket Ticket) error {
 	default:
 		return ErrForbidden
 	}
+}
+
+func checkStatus(status string) bool {
+	return status == statusOpen || status == statusInProgress || status == statusClosed || status == statusPending
 }
