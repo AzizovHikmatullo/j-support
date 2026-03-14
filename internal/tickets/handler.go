@@ -20,7 +20,7 @@ type Service interface {
 	ChangeStatus(ctx context.Context, userID int, role string, ticketID uuid.UUID, status string) error
 	CreateMessage(ctx context.Context, ticketID uuid.UUID, senderID int, senderType, content string) (*Message, error)
 	GetMessages(ctx context.Context, userID int, role string, ticketID uuid.UUID) ([]Message, error)
-	SetBotService(botService botService)
+	SetScenarioService(botService scenarioService)
 }
 
 type handler struct {

@@ -1,4 +1,4 @@
-package bot
+package scenario
 
 import (
 	"context"
@@ -30,7 +30,7 @@ func NewService(repo Repository, ticketService tickets.Service) Service {
 func (s *service) StartIfExists(ctx context.Context, ticketID uuid.UUID, categoryID int) error {
 	scenario, err := s.repo.GetActiveScenario(ctx, categoryID)
 	if errors.Is(err, ErrScenarioNotFound) {
-		_ = s.ticketService.ChangeStatus(ctx, 0, "bot", ticketID, "open")
+		_ = s.ticketService.ChangeStatus(ctx, 0, "scenario", ticketID, "open")
 		return nil
 	}
 
@@ -47,12 +47,12 @@ func (s *service) StartIfExists(ctx context.Context, ticketID uuid.UUID, categor
 		return err
 	}
 
-	if err := s.ticketService.ChangeStatus(ctx, 0, "bot", ticketID, "pending"); err != nil {
+	if err := s.ticketService.ChangeStatus(ctx, 0, "scenario", ticketID, "pending"); err != nil {
 		return err
 	}
 
 	firstQuestion := steps[0].Question
-	_, err = s.ticketService.CreateMessage(ctx, ticketID, 0, "bot", firstQuestion)
+	_, err = s.ticketService.CreateMessage(ctx, ticketID, 0, "scenario", firstQuestion)
 	return err
 }
 
@@ -70,7 +70,7 @@ func (s *service) HandleMessage(ctx context.Context, ticketID uuid.UUID) (*strin
 	nextStepIndex := session.CurrentStep + 1
 
 	if nextStepIndex >= len(steps) {
-		if err := s.ticketService.ChangeStatus(ctx, 0, "bot", ticketID, "open"); err != nil {
+		if err := s.ticketService.ChangeStatus(ctx, 0, "scenario", ticketID, "open"); err != nil {
 			return nil, err
 		}
 		return nil, nil

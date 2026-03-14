@@ -22,29 +22,29 @@ type Repository interface {
 	BeginTxx(ctx context.Context) (*sqlx.Tx, error)
 }
 
-type botService interface {
+type scenarioService interface {
 	StartIfExists(ctx context.Context, ticketID uuid.UUID, categoryID int) error
 	HandleMessage(ctx context.Context, ticketID uuid.UUID) (*string, error)
 }
 
 type service struct {
-	repo         Repository
-	categoryRepo categories.Repository
-	botService   botService
-	publisher    ws.Publisher
+	repo            Repository
+	categoryRepo    categories.Repository
+	scenarioService scenarioService
+	publisher       ws.Publisher
 }
 
-func NewService(repo Repository, categoryRepo categories.Repository, pub ws.Publisher, botService botService) Service {
+func NewService(repo Repository, categoryRepo categories.Repository, pub ws.Publisher, botService scenarioService) Service {
 	return &service{
-		repo:         repo,
-		categoryRepo: categoryRepo,
-		publisher:    pub,
-		botService:   botService,
+		repo:            repo,
+		categoryRepo:    categoryRepo,
+		publisher:       pub,
+		scenarioService: botService,
 	}
 }
 
-func (s *service) SetBotService(botService botService) {
-	s.botService = botService
+func (s *service) SetScenarioService(botService scenarioService) {
+	s.scenarioService = botService
 }
 
 func (s *service) Create(ctx context.Context, contactID int, role string, source string, req CreateTicketRequest) (*Ticket, error) {
@@ -86,7 +86,7 @@ func (s *service) Create(ctx context.Context, contactID int, role string, source
 		return nil, err
 	}
 
-	if err = s.botService.StartIfExists(ctx, ticket.ID, category.ID); err != nil {
+	if err = s.scenarioService.StartIfExists(ctx, ticket.ID, category.ID); err != nil {
 		return nil, err
 	}
 
@@ -234,7 +234,7 @@ func (s *service) CreateMessage(ctx context.Context, ticketID uuid.UUID, senderI
 	}
 
 	if ticket.Status == statusPending && senderType == "user" {
-		nextQuestion, err := s.botService.HandleMessage(ctx, ticketID)
+		nextQuestion, err := s.scenarioService.HandleMessage(ctx, ticketID)
 		if err != nil {
 			return message, nil
 		}

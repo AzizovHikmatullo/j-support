@@ -1,7 +1,6 @@
 package app
 
 import (
-	"github.com/AzizovHikmatullo/j-support/internal/bot"
 	"log/slog"
 	"net/http"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/AzizovHikmatullo/j-support/internal/config"
 	"github.com/AzizovHikmatullo/j-support/internal/contacts"
 	"github.com/AzizovHikmatullo/j-support/internal/middleware"
+	"github.com/AzizovHikmatullo/j-support/internal/scenario"
 	"github.com/AzizovHikmatullo/j-support/internal/tickets"
 	"github.com/AzizovHikmatullo/j-support/internal/ws"
 	"github.com/gin-contrib/cors"
@@ -107,10 +107,10 @@ func (a *App) InitRoutes() {
 	ticketsService := tickets.NewService(ticketsRepo, categoriesRepo, publisher, nil)
 	ticketsHandler := tickets.NewHandler(ticketsService, registry)
 
-	botRepository := bot.NewRepository(a.db)
-	botService := bot.NewService(botRepository, ticketsService)
+	scenarioRepository := scenario.NewRepository(a.db)
+	scenarioService := scenario.NewService(scenarioRepository, ticketsService)
 
-	ticketsService.SetBotService(botService)
+	ticketsService.SetScenarioService(scenarioService)
 
 	clientRoutes := a.router.Group("/tickets")
 	clientRoutes.Use(middleware.ChannelIdentityMiddleware(a.cfg.JWT.Secret))
