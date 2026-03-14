@@ -140,25 +140,23 @@ func (r *repository) ChangeAssigned(ctx context.Context, ticketID uuid.UUID, ass
 	return ticket, nil
 }
 
-func (r *repository) ChangeStatus(ctx context.Context, status string, ticketID uuid.UUID) (Ticket, error) {
-	var ticket Ticket
-
+func (r *repository) ChangeStatus(ctx context.Context, status string, ticketID uuid.UUID) error {
 	query := `
 		UPDATE tickets 
 		SET status = $2, updated_at = now() 
-		WHERE id = $1 
-		RETURNING *
+		WHERE id = $1
 	`
 
-	err := r.db.QueryRowxContext(ctx, query,
+	_, err := r.db.ExecContext(ctx, query,
 		ticketID,
 		status,
-	).StructScan(&ticket)
+	)
+
 	if err != nil {
-		return ticket, err
+		return err
 	}
 
-	return ticket, nil
+	return nil
 }
 
 func (r *repository) CreateMessage(ctx context.Context, tx *sqlx.Tx, message *Message) error {

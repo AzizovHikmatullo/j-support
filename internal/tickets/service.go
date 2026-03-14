@@ -2,7 +2,6 @@ package tickets
 
 import (
 	"context"
-
 	"github.com/AzizovHikmatullo/j-support/internal/categories"
 	"github.com/AzizovHikmatullo/j-support/internal/ws"
 	"github.com/google/uuid"
@@ -16,25 +15,36 @@ type Repository interface {
 	GetAll(ctx context.Context) ([]Ticket, error)
 	GetByID(ctx context.Context, ticketID uuid.UUID) (Ticket, error)
 	ChangeAssigned(ctx context.Context, ticketID uuid.UUID, assignedTo int) (Ticket, error)
-	ChangeStatus(ctx context.Context, status string, ticketID uuid.UUID) (Ticket, error)
+	ChangeStatus(ctx context.Context, status string, ticketID uuid.UUID) error
 
 	CreateMessage(ctx context.Context, tx *sqlx.Tx, message *Message) error
 	GetMessages(ctx context.Context, ticketID uuid.UUID) ([]Message, error)
 	BeginTxx(ctx context.Context) (*sqlx.Tx, error)
 }
 
+type botService interface {
+	StartIfExists(ctx context.Context, ticketID uuid.UUID, categoryID int) error
+	HandleMessage(ctx context.Context, ticketID uuid.UUID) (*string, error)
+}
+
 type service struct {
 	repo         Repository
 	categoryRepo categories.Repository
+	botService   botService
 	publisher    ws.Publisher
 }
 
-func NewService(repo Repository, categoryRepo categories.Repository, pub ws.Publisher) Service {
+func NewService(repo Repository, categoryRepo categories.Repository, pub ws.Publisher, botService botService) Service {
 	return &service{
 		repo:         repo,
 		categoryRepo: categoryRepo,
 		publisher:    pub,
+		botService:   botService,
 	}
+}
+
+func (s *service) SetBotService(botService botService) {
+	s.botService = botService
 }
 
 func (s *service) Create(ctx context.Context, contactID int, role string, source string, req CreateTicketRequest) (*Ticket, error) {
@@ -73,6 +83,10 @@ func (s *service) Create(ctx context.Context, contactID int, role string, source
 	}
 
 	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	if err = s.botService.StartIfExists(ctx, ticket.ID, category.ID); err != nil {
 		return nil, err
 	}
 
@@ -149,23 +163,23 @@ func (s *service) ChangeAssigned(ctx context.Context, userID int, role string, t
 	return s.repo.ChangeAssigned(ctx, ticket.ID, assignedTo)
 }
 
-func (s *service) ChangeStatus(ctx context.Context, userID int, role string, ticketID uuid.UUID, status string) (Ticket, error) {
+func (s *service) ChangeStatus(ctx context.Context, userID int, role string, ticketID uuid.UUID, status string) error {
 	if !checkStatus(status) {
-		return Ticket{}, ErrInvalidStatus
+		return ErrInvalidStatus
 	}
 
 	ticket, err := s.repo.GetByID(ctx, ticketID)
 	if err != nil {
-		return Ticket{}, err
+		return err
 	}
 
 	if role == "user" && (ticket.ContactID != userID || status != statusClosed) {
-		return Ticket{}, ErrForbidden
+		return ErrForbidden
 	}
 
 	if role == "support" {
 		if ticket.AssignedTo == nil || *ticket.AssignedTo != userID {
-			return Ticket{}, ErrForbidden
+			return ErrForbidden
 		}
 	}
 
@@ -215,12 +229,35 @@ func (s *service) CreateMessage(ctx context.Context, ticketID uuid.UUID, senderI
 		Payload: message,
 	}
 
-	if err = tx.Commit(); err != nil {
-		return nil, err
-	}
-
 	if err := s.publisher.PublishToTicket(ticket.ID, event); err != nil {
 		return nil, ErrPublishFailed
+	}
+
+	if ticket.Status == statusPending && senderType == "user" {
+		nextQuestion, err := s.botService.HandleMessage(ctx, ticketID)
+		if err != nil {
+			return message, nil
+		}
+
+		if nextQuestion != nil {
+			botMessage := NewMessage(ticketID, 0, "bot", *nextQuestion)
+			if err = s.repo.CreateMessage(ctx, tx, botMessage); err != nil {
+				return message, nil
+			}
+
+			botEvent := ws.Event{
+				Type:    "message_created",
+				Payload: botMessage,
+			}
+
+			if err := s.publisher.PublishToTicket(ticket.ID, botEvent); err != nil {
+				return nil, ErrPublishFailed
+			}
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, err
 	}
 
 	return message, nil

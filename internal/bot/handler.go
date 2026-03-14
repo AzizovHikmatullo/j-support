@@ -8,5 +8,5 @@ import (
 
 type Service interface {
 	StartIfExists(ctx context.Context, ticketID uuid.UUID, categoryID int) error
-	HandleMessage(ctx context.Context, ticketID uuid.UUID, answer string) (*string, error)
+	HandleMessage(ctx context.Context, ticketID uuid.UUID) (*string, error)
 }

@@ -30,7 +30,7 @@ func NewService(repo Repository, ticketService tickets.Service) Service {
 func (s *service) StartIfExists(ctx context.Context, ticketID uuid.UUID, categoryID int) error {
 	scenario, err := s.repo.GetActiveScenario(ctx, categoryID)
 	if errors.Is(err, ErrScenarioNotFound) {
-		s.ticketService.ChangeStatus(ctx, 0, "bot", ticketID, "open")
+		_ = s.ticketService.ChangeStatus(ctx, 0, "bot", ticketID, "open")
 		return nil
 	}
 
@@ -56,7 +56,7 @@ func (s *service) StartIfExists(ctx context.Context, ticketID uuid.UUID, categor
 	return err
 }
 
-func (s *service) HandleMessage(ctx context.Context, ticketID uuid.UUID, answer string) (*string, error) {
+func (s *service) HandleMessage(ctx context.Context, ticketID uuid.UUID) (*string, error) {
 	session, err := s.repo.GetSession(ctx, ticketID)
 	if err != nil {
 		return nil, err

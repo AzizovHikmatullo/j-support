@@ -52,7 +52,6 @@ var (
 	ErrCategoryDisabled   = errors.New("category disabled")
 	ErrForbidden          = errors.New("forbidden")
 	ErrInvalidStatus      = errors.New("invalid status")
-	ErrInvalidSource      = errors.New("invalid source")
 	ErrCannotAssign       = errors.New("you can not assign this ticket")
 	ErrTicketNotFound     = errors.New("ticket not found")
 	ErrClosedTicket       = errors.New("cannot write to closed ticket")
@@ -63,6 +62,7 @@ var (
 )
 
 const (
+	statusPending    = "pending"
 	statusOpen       = "open"
 	statusInProgress = "in_progress"
 	statusClosed     = "closed"
@@ -75,7 +75,7 @@ func NewTicket(contactID int, source string, req CreateTicketRequest) *Ticket {
 		ID:         uuid.Must(uuid.NewV7()),
 		CategoryID: req.CategoryID,
 		ContactID:  contactID,
-		Status:     statusOpen,
+		Status:     statusPending,
 		Subject:    req.Subject,
 		Source:     source,
 	}

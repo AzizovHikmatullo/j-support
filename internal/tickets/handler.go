@@ -17,9 +17,10 @@ type Service interface {
 	GetByID(ctx context.Context, userID int, role string, ticketID uuid.UUID) (Ticket, error)
 	GetMine(ctx context.Context, contactID int, ticketID uuid.UUID) (Ticket, error)
 	ChangeAssigned(ctx context.Context, userID int, role string, ticketID uuid.UUID, assignedTo int) (Ticket, error)
-	ChangeStatus(ctx context.Context, userID int, role string, ticketID uuid.UUID, status string) (Ticket, error)
+	ChangeStatus(ctx context.Context, userID int, role string, ticketID uuid.UUID, status string) error
 	CreateMessage(ctx context.Context, ticketID uuid.UUID, senderID int, senderType, content string) (*Message, error)
 	GetMessages(ctx context.Context, userID int, role string, ticketID uuid.UUID) ([]Message, error)
+	SetBotService(botService botService)
 }
 
 type handler struct {
@@ -47,6 +48,7 @@ func (h *handler) Create(c *gin.Context) {
 	identity, ok := middleware.GetIdentity(c)
 	if !ok {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": ErrUnauthorized.Error()})
+		return
 	}
 
 	contact, err := h.resolveContact(c)
@@ -65,6 +67,22 @@ func (h *handler) Create(c *gin.Context) {
 }
 
 func (h *handler) GetMine(c *gin.Context) {
+	contact, err := h.resolveContact(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	tickets, err := h.service.Get(c.Request.Context(), userRole, contact.ID)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, tickets)
+}
+
+func (h *handler) GetMineByID(c *gin.Context) {
 	ticketID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid ticketID"})
@@ -228,13 +246,13 @@ func (h *handler) ChangeStatus(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt("userID")
 
-	ticket, err := h.service.ChangeStatus(c.Request.Context(), userID, role, ticketID, req.Status)
+	err = h.service.ChangeStatus(c.Request.Context(), userID, role, ticketID, req.Status)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, ticket)
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 func (h *handler) CreateMessageBySupport(c *gin.Context) {

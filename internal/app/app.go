@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/AzizovHikmatullo/j-support/internal/bot"
 	"log/slog"
 	"net/http"
 	"time"
@@ -103,14 +104,20 @@ func (a *App) InitRoutes() {
 	registry.Register(channelTelegram.New(contactService))
 
 	ticketsRepo := tickets.NewRepository(a.db)
-	ticketsService := tickets.NewService(ticketsRepo, categoriesRepo, publisher)
+	ticketsService := tickets.NewService(ticketsRepo, categoriesRepo, publisher, nil)
 	ticketsHandler := tickets.NewHandler(ticketsService, registry)
+
+	botRepository := bot.NewRepository(a.db)
+	botService := bot.NewService(botRepository, ticketsService)
+
+	ticketsService.SetBotService(botService)
 
 	clientRoutes := a.router.Group("/tickets")
 	clientRoutes.Use(middleware.ChannelIdentityMiddleware(a.cfg.JWT.Secret))
 	{
 		clientRoutes.POST("", middleware.RequireRole("user"), ticketsHandler.Create)
-		clientRoutes.GET(":id", middleware.RequireRole("user"), ticketsHandler.GetMine)
+		clientRoutes.GET("", middleware.RequireRole("user"), ticketsHandler.GetMine)
+		clientRoutes.GET(":id", middleware.RequireRole("user"), ticketsHandler.GetMineByID)
 		clientRoutes.POST(":id/messages", middleware.RequireRole("user"), ticketsHandler.CreateMessageByUser)
 		clientRoutes.GET(":id/messages", middleware.RequireRole("user"), ticketsHandler.GetMessagesForUser)
 	}
