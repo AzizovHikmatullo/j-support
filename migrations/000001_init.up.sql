@@ -8,7 +8,7 @@ create table categories (
 );
 
 create table contacts (
-    id uuid primary key,
+    id int primary key,
     user_id text unique,
     external_id text unique,
     name text,
@@ -19,7 +19,7 @@ create table contacts (
 create table tickets (
     id uuid primary key,
     category_id integer not null references categories(id),
-    creator_id uuid not null references contacts(id),
+    contact_id int not null references contacts(id),
     assigned_id integer,
     status text not null,
     subject text not null,
@@ -31,8 +31,29 @@ create table tickets (
 create table messages (
     id uuid primary key,
     ticket_id uuid not null references tickets(id),
-    sender_id uuid not null references contacts(id),
+    sender_id int not null,
     sender_type text not null,
     content text not null,
     created_at timestamp not null default now()
+);
+
+create table bot_scenarios (
+    id serial primary key,
+    category_id int not null references categories(id),
+    is_active bool not null default true,
+    created_at timestamp not null default now()
+);
+
+create table bot_steps (
+    id serial primary key,
+    scenario_id int references bot_scenarios(id),
+    step_order int not null,
+    question text not null,
+    field text not null
+);
+
+create table bot_sessions (
+    ticket_id uuid references tickets(id),
+    scenario_id int references bot_scenarios(id),
+    current_step int not null default 0
 );
