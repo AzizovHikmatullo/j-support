@@ -86,6 +86,11 @@ func (s *service) StartIfExists(ctx context.Context, ticketID uuid.UUID, categor
 		return err
 	}
 
+	if len(steps) == 0 {
+		_ = s.ticketService.ChangeStatus(ctx, 0, "bot", ticketID, "open")
+		return nil
+	}
+
 	firstQuestion := steps[0].Question
 	_, err = s.ticketService.CreateMessage(ctx, ticketID, 0, "scenario", firstQuestion)
 	return err
