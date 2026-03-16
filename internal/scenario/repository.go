@@ -109,6 +109,10 @@ func (r *postgresRepo) GetAll(ctx context.Context) ([]Scenario, error) {
 
 func (r *postgresRepo) Update(ctx context.Context, scenarioID int, req UpdateScenarioRequest) (Scenario, error) {
 	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return Scenario{}, err
+	}
+	defer tx.Rollback()
 
 	updateBuilder := squirrel.Update("bot_scenarios").
 		PlaceholderFormat(squirrel.Dollar).
