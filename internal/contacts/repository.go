@@ -83,18 +83,17 @@ func (r *postgresRepo) GetByID(ctx context.Context, id int) (Contact, error) {
 
 func (r *postgresRepo) Create(ctx context.Context, contact *Contact) error {
 	query := `
-		INSERT INTO contacts (id, user_id, external_id, name, phone) 
-		VALUES ($1, $2, $3, $4, $5) 
-		RETURNING created_at
+		INSERT INTO contacts(user_id, external_id, name, phone) 
+		VALUES ($1, $2, $3, $4) 
+		RETURNING id, created_at
 	`
 
 	err := r.db.QueryRowxContext(ctx, query,
-		contact.ID,
 		contact.UserID,
 		contact.ExternalID,
 		contact.Name,
 		contact.Phone,
-	).Scan(&contact.CreatedAt)
+	).Scan(&contact.ID, &contact.CreatedAt)
 	if err != nil {
 		return err
 	}
