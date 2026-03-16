@@ -3,11 +3,18 @@ package scenario
 import (
 	"context"
 	"errors"
+
 	"github.com/AzizovHikmatullo/j-support/internal/tickets"
 	"github.com/google/uuid"
 )
 
 type Repository interface {
+	CreateScenario(ctx context.Context, categoryID int) (Scenario, error)
+	CreateSteps(ctx context.Context, scenarioID int, steps []StepRequest) ([]Step, error)
+	Get(ctx context.Context, id int) (Scenario, error)
+	GetAll(ctx context.Context) ([]Scenario, error)
+	Update(ctx context.Context, scenarioID int, req UpdateScenarioRequest) (Scenario, error)
+
 	GetActiveScenario(ctx context.Context, categoryID int) (Scenario, error)
 	GetSteps(ctx context.Context, scenarioID int) ([]Step, error)
 	CreateSession(ctx context.Context, ticketID uuid.UUID, scenarioID int) error
@@ -25,6 +32,34 @@ func NewService(repo Repository, ticketService tickets.Service) Service {
 		repo:          repo,
 		ticketService: ticketService,
 	}
+}
+
+func (s *service) CreateScenario(ctx context.Context, req CreateScenarioRequest) (Scenario, error) {
+	scenario, err := s.repo.CreateScenario(ctx, req.CategoryID)
+	if err != nil {
+		return Scenario{}, err
+	}
+
+	steps, err := s.repo.CreateSteps(ctx, scenario.ID, req.Steps)
+	if err != nil {
+		return Scenario{}, err
+	}
+
+	scenario.BotSteps = steps
+
+	return scenario, nil
+}
+
+func (s *service) Get(ctx context.Context, id int) (Scenario, error) {
+	return s.repo.Get(ctx, id)
+}
+
+func (s *service) GetAll(ctx context.Context) ([]Scenario, error) {
+	return s.repo.GetAll(ctx)
+}
+
+func (s *service) Update(ctx context.Context, scenarioID int, req UpdateScenarioRequest) (Scenario, error) {
+	return s.repo.Update(ctx, scenarioID, req)
 }
 
 func (s *service) StartIfExists(ctx context.Context, ticketID uuid.UUID, categoryID int) error {

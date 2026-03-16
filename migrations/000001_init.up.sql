@@ -48,8 +48,7 @@ create table bot_steps (
     id serial primary key,
     scenario_id int references bot_scenarios(id),
     step_order int not null,
-    question text not null,
-    field text not null
+    question text not null
 );
 
 create table bot_sessions (

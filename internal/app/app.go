@@ -83,6 +83,10 @@ func (a *App) InitRoutes() {
 
 	publisher := ws.NewPublisher(a.hub)
 
+	// ---------
+	// CATEGORIES
+	// ----------
+
 	categoriesRepo := categories.NewRepository(a.db)
 	categoriesService := categories.NewService(categoriesRepo)
 	categoriesHandler := categories.NewHandler(categoriesService)
@@ -95,22 +99,52 @@ func (a *App) InitRoutes() {
 		categoriesRoutes.PATCH("/:id", middleware.RequireRole("admin"), categoriesHandler.Update)
 	}
 
+	// ---------
+	// CONTACTS
+	// ----------
+
 	contactRepo := contacts.NewRepository(a.db)
 	contactService := contacts.NewService(contactRepo)
+
+	// ---------
+	// CHANNELS
+	// ----------
 
 	registry := channel.NewRegistry()
 	registry.Register(channelApp.New(contactService))
 	registry.Register(channelWeb.New(contactService))
 	registry.Register(channelTelegram.New(contactService))
 
+	// ---------
+	// TICKETS
+	// ----------
+
 	ticketsRepo := tickets.NewRepository(a.db)
 	ticketsService := tickets.NewService(ticketsRepo, categoriesRepo, publisher, nil)
 	ticketsHandler := tickets.NewHandler(ticketsService, registry)
 
+	// ---------
+	// SCENARIOS
+	// ----------
+
 	scenarioRepository := scenario.NewRepository(a.db)
 	scenarioService := scenario.NewService(scenarioRepository, ticketsService)
+	scenarioHandler := scenario.NewHandler(scenarioService)
+
+	scenarioRoutes := a.router.Group("/scenarios")
+	scenarioRoutes.Use(middleware.AuthMiddleware(a.cfg.JWT.Secret))
+	{
+		scenarioRoutes.POST("", middleware.RequireRole("admin"), scenarioHandler.Create)
+		scenarioRoutes.GET("", middleware.RequireRole("admin"), scenarioHandler.GetAll)
+		scenarioRoutes.GET(":id", middleware.RequireRole("admin"), scenarioHandler.Get)
+		scenarioRoutes.PATCH(":id", middleware.RequireRole("admin"), scenarioHandler.Update)
+	}
 
 	ticketsService.SetScenarioService(scenarioService)
+
+	// ---------
+	// CLIENT ROUTES
+	// ----------
 
 	clientRoutes := a.router.Group("/tickets")
 	clientRoutes.Use(middleware.ChannelIdentityMiddleware(a.cfg.JWT.Secret))
@@ -121,6 +155,10 @@ func (a *App) InitRoutes() {
 		clientRoutes.POST(":id/messages", middleware.RequireRole("user"), ticketsHandler.CreateMessageByUser)
 		clientRoutes.GET(":id/messages", middleware.RequireRole("user"), ticketsHandler.GetMessagesForUser)
 	}
+
+	// ---------
+	// SUPPORT ROUTES
+	// ----------
 
 	supportRoutes := a.router.Group("/support/tickets")
 	supportRoutes.Use(middleware.AuthMiddleware(a.cfg.JWT.Secret))
@@ -133,11 +171,19 @@ func (a *App) InitRoutes() {
 		supportRoutes.GET(":id/messages", middleware.RequireRole("support", "admin"), ticketsHandler.GetMessagesForSupport)
 	}
 
+	// ---------
+	// WEBSOCKET
+	// ----------
+
 	wsHandler := ws.NewWSHandler(a.hub)
 	wsRoutes := a.router.Group("/ws")
 	{
 		wsRoutes.GET("/tickets/:id", wsHandler.ServeTicketWS)
 	}
+
+	// ---------
+	// WIDGETS
+	// ----------
 
 	initHandler := channel.NewHandler(contactService)
 	initRoutes := a.router.Group("/init")
