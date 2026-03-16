@@ -8,7 +8,7 @@ create table categories (
 );
 
 create table contacts (
-    id int primary key,
+    id serial primary key,
     user_id text unique,
     external_id text unique,
     name text,
@@ -52,7 +52,7 @@ create table bot_steps (
 );
 
 create table bot_sessions (
-    ticket_id uuid references tickets(id),
+    ticket_id uuid primary key references tickets(id),
     scenario_id int references bot_scenarios(id),
     current_step int not null default 0
 );
