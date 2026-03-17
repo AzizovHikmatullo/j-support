@@ -73,6 +73,8 @@ func (a *App) InitRoutes() {
 			"Origin",
 			"Content-Type",
 			"Authorization",
+			"X-Session-Token",
+			"X-Telegram-ID",
 		},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
@@ -92,10 +94,9 @@ func (a *App) InitRoutes() {
 	categoriesHandler := categories.NewHandler(categoriesService)
 
 	categoriesRoutes := a.router.Group("/categories")
-	categoriesRoutes.Use(middleware.AuthMiddleware(a.cfg.JWT.Secret))
 	{
 		categoriesRoutes.POST("", middleware.RequireRole("admin"), categoriesHandler.Create)
-		categoriesRoutes.GET("", middleware.RequireRole("admin", "support", "user"), categoriesHandler.Get)
+		categoriesRoutes.GET("", categoriesHandler.Get)
 		categoriesRoutes.PATCH("/:id", middleware.RequireRole("admin"), categoriesHandler.Update)
 	}
 
