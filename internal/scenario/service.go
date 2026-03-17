@@ -92,7 +92,7 @@ func (s *service) StartIfExists(ctx context.Context, ticketID uuid.UUID, categor
 	}
 
 	firstQuestion := steps[0].Question
-	_, err = s.ticketService.CreateMessage(ctx, ticketID, 0, "scenario", firstQuestion)
+	_, err = s.ticketService.CreateMessage(ctx, ticketID, 0, "bot", firstQuestion)
 	return err
 }
 
