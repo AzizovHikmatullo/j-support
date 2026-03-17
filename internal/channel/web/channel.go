@@ -16,7 +16,7 @@ func New(contactService contacts.Service) channel.Channel {
 }
 
 func (c *webChannel) Name() string {
-	return channel.ChannelTelegram
+	return channel.ChannelWeb
 }
 
 func (c *webChannel) ResolveContact(ctx context.Context, rawID string) (*contacts.Contact, error) {
