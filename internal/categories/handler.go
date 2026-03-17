@@ -44,6 +44,10 @@ func (h *handler) Create(c *gin.Context) {
 func (h *handler) Get(c *gin.Context) {
 	role := c.GetString("role")
 
+	if role == "" {
+		role = "user"
+	}
+
 	categories, err := h.service.Get(c.Request.Context(), role)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
