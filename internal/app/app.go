@@ -94,10 +94,11 @@ func (a *App) InitRoutes() {
 	categoriesHandler := categories.NewHandler(categoriesService)
 
 	categoriesRoutes := a.router.Group("/categories")
+	categoriesRoutes.Use(middleware.AuthMiddleware(a.cfg.JWT.Secret))
 	{
 		categoriesRoutes.POST("", middleware.RequireRole("admin"), categoriesHandler.Create)
-		categoriesRoutes.GET("", categoriesHandler.Get)
 		categoriesRoutes.PATCH("/:id", middleware.RequireRole("admin"), categoriesHandler.Update)
+		a.router.GET("/categories", categoriesHandler.Get)
 	}
 
 	// ---------

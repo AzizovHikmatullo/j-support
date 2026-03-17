@@ -11,6 +11,7 @@ type Repository interface {
 	GetByID(ctx context.Context, id int) (Contact, error)
 	Create(ctx context.Context, contact *Contact) error
 	Update(ctx context.Context, id int, name, phone string) (Contact, error)
+	GetByPhone(ctx context.Context, phone string) (Contact, error)
 }
 
 type service struct {
@@ -77,12 +78,24 @@ func (s *service) Update(ctx context.Context, id int, name, phone string) (Conta
 	return s.repo.Update(ctx, id, name, phone)
 }
 
-func (s *service) InitContact(ctx context.Context, externalID, name, phone string) error {
-	contact, err := s.Resolve(ctx, nil, &externalID)
-	if err != nil {
-		return err
+func (s *service) InitContact(ctx context.Context, externalID, name, phone string) (Contact, error) {
+	c, err := s.repo.GetByPhone(ctx, phone)
+	if err == nil {
+		if c.ExternalID == nil {
+			c.ExternalID = &externalID
+		}
+		return c, nil
 	}
 
-	_, err = s.repo.Update(ctx, contact.ID, name, phone)
-	return err
+	if !errors.Is(err, ErrContactNotFound) {
+		return Contact{}, err
+	}
+
+	contact, err := s.Resolve(ctx, nil, &externalID)
+	if err != nil {
+		return Contact{}, err
+	}
+
+	updatedContact, err := s.repo.Update(ctx, contact.ID, name, phone)
+	return updatedContact, err
 }

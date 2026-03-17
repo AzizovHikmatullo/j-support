@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-
 	"github.com/jmoiron/sqlx"
 )
 
@@ -70,6 +69,27 @@ func (r *postgresRepo) GetByID(ctx context.Context, id int) (Contact, error) {
 	`
 
 	err := r.db.GetContext(ctx, &contact, query, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return contact, ErrContactNotFound
+		}
+
+		return contact, err
+	}
+
+	return contact, nil
+}
+
+func (r *postgresRepo) GetByPhone(ctx context.Context, phone string) (Contact, error) {
+	var contact Contact
+
+	query := `
+		SELECT * 
+		FROM contacts 
+		WHERE phone = $1
+	`
+
+	err := r.db.GetContext(ctx, &contact, query, phone)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return contact, ErrContactNotFound
