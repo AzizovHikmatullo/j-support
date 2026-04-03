@@ -188,7 +188,22 @@ func (s *service) ChangeStatus(ctx context.Context, userID int, role string, tic
 		}
 	}
 
-	return s.repo.ChangeStatus(ctx, status, ticketID)
+	err = s.repo.ChangeStatus(ctx, status, ticketID)
+	if err != nil {
+		return err
+	}
+
+	if status == statusClosed {
+		event := ws.Event{
+			Type:    "ticket_closed",
+			Payload: map[string]any{"ticket_id": ticketID},
+		}
+		if err = s.publisher.PublishToTicket(ticketID, event); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *service) RateTicket(ctx context.Context, contactID int, ticketID uuid.UUID, req CreateRatingRequest) (Rating, error) {
