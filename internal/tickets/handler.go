@@ -18,6 +18,7 @@ type Service interface {
 	GetMine(ctx context.Context, contactID int, ticketID uuid.UUID) (Ticket, error)
 	ChangeAssigned(ctx context.Context, userID int, role string, ticketID uuid.UUID, assignedTo int) (Ticket, error)
 	ChangeStatus(ctx context.Context, userID int, role string, ticketID uuid.UUID, status string) error
+	RateTicket(ctx context.Context, contactID int, ticketID uuid.UUID, req CreateRatingRequest) (Rating, error)
 	CreateMessage(ctx context.Context, ticketID uuid.UUID, senderID int, senderType, content string) (*Message, error)
 	GetMessages(ctx context.Context, userID int, role string, ticketID uuid.UUID) ([]Message, error)
 	SetScenarioService(botService scenarioService)
@@ -102,6 +103,34 @@ func (h *handler) GetMineByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, ticket)
+}
+
+func (h *handler) Rate(c *gin.Context) {
+	ticketID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid ticketID"})
+		return
+	}
+
+	var req CreateRatingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+		return
+	}
+
+	contact, err := h.resolveContact(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	rating, err := h.service.RateTicket(c.Request.Context(), contact.ID, ticketID, req)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, rating)
 }
 
 func (h *handler) CreateMessageByUser(c *gin.Context) {

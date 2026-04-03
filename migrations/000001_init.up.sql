@@ -28,6 +28,13 @@ create table tickets (
     updated_at timestamp not null default now()
 );
 
+create table ticket_ratings (
+    id serial primary key ,
+    ticket_id uuid not null unique references tickets(id) on delete cascade,
+    contact_id int not null references contacts(id),
+    score int not null check (score between 1 and 5)
+);
+
 create table messages (
     id uuid primary key,
     ticket_id uuid not null references tickets(id),

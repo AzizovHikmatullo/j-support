@@ -159,6 +159,7 @@ func (a *App) InitRoutes() {
 		clientRoutes.POST("", middleware.RequireRole("user"), ticketsHandler.Create)
 		clientRoutes.GET("", middleware.RequireRole("user"), ticketsHandler.GetMine)
 		clientRoutes.GET(":id", middleware.RequireRole("user"), ticketsHandler.GetMineByID)
+		clientRoutes.POST(":id/rate", middleware.RequireRole("user"), ticketsHandler.Rate)
 		clientRoutes.POST(":id/messages", middleware.RequireRole("user"), ticketsHandler.CreateMessageByUser)
 		clientRoutes.GET(":id/messages", middleware.RequireRole("user"), ticketsHandler.GetMessagesForUser)
 	}

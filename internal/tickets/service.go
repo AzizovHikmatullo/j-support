@@ -2,6 +2,7 @@ package tickets
 
 import (
 	"context"
+	"errors"
 
 	"github.com/AzizovHikmatullo/j-support/internal/categories"
 	"github.com/AzizovHikmatullo/j-support/internal/ws"
@@ -17,6 +18,9 @@ type Repository interface {
 	GetByID(ctx context.Context, ticketID uuid.UUID) (Ticket, error)
 	ChangeAssigned(ctx context.Context, ticketID uuid.UUID, assignedTo int) (Ticket, error)
 	ChangeStatus(ctx context.Context, status string, ticketID uuid.UUID) error
+
+	CreateRating(ctx context.Context, rating *Rating) error
+	GetRating(ctx context.Context, ticketID uuid.UUID) (Rating, error)
 
 	CreateMessage(ctx context.Context, tx *sqlx.Tx, message *Message) error
 	GetMessages(ctx context.Context, ticketID uuid.UUID) ([]Message, error)
@@ -185,6 +189,44 @@ func (s *service) ChangeStatus(ctx context.Context, userID int, role string, tic
 	}
 
 	return s.repo.ChangeStatus(ctx, status, ticketID)
+}
+
+func (s *service) RateTicket(ctx context.Context, contactID int, ticketID uuid.UUID, req CreateRatingRequest) (Rating, error) {
+	if req.Score < 1 || req.Score > 5 {
+		return Rating{}, ErrInvalidScore
+	}
+
+	ticket, err := s.repo.GetByID(ctx, ticketID)
+	if err != nil {
+		return Rating{}, err
+	}
+
+	if ticket.Status != statusClosed {
+		return Rating{}, ErrNotClosed
+	}
+
+	if ticket.ContactID != contactID {
+		return Rating{}, ErrForbidden
+	}
+
+	_, err = s.repo.GetRating(ctx, ticketID)
+	if err == nil {
+		return Rating{}, ErrAlreadyRated
+	}
+	if !errors.Is(err, ErrNotFound) {
+		return Rating{}, err
+	}
+
+	rating := &Rating{
+		TicketID:  ticketID,
+		ContactID: contactID,
+		Score:     req.Score,
+	}
+	if err = s.repo.CreateRating(ctx, rating); err != nil {
+		return Rating{}, err
+	}
+
+	return *rating, nil
 }
 
 func (s *service) CreateMessage(ctx context.Context, ticketID uuid.UUID, senderID int, senderType, content string) (*Message, error) {

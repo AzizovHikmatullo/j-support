@@ -29,6 +29,13 @@ type Message struct {
 	CreatedAt  time.Time `json:"created_at" db:"created_at"`
 }
 
+type Rating struct {
+	ID        int       `db:"id"         json:"id"`
+	TicketID  uuid.UUID `db:"ticket_id"  json:"ticket_id"`
+	ContactID int       `db:"contact_id" json:"contact_id"`
+	Score     int       `db:"score"      json:"score"`
+}
+
 type CreateTicketRequest struct {
 	CategoryID int    `json:"category_id" binding:"required"`
 	Message    string `json:"message" binding:"required"`
@@ -47,6 +54,10 @@ type CreateMessageRequest struct {
 	Content string `json:"content" binding:"required"`
 }
 
+type CreateRatingRequest struct {
+	Score int `json:"score" binding:"required"`
+}
+
 var (
 	ErrUndefined          = errors.New("something went wrong")
 	ErrCategoryDisabled   = errors.New("category disabled")
@@ -59,6 +70,10 @@ var (
 	ErrPublishFailed      = errors.New("failed to publish message")
 	ErrUnauthorized       = errors.New("unauthorized")
 	ErrUnknownChannel     = errors.New("unknown request channel")
+	ErrNotFound           = errors.New("not found")
+	ErrAlreadyRated       = errors.New("ticket already rated")
+	ErrNotClosed          = errors.New("ticket is not closed yet")
+	ErrInvalidScore       = errors.New("score must be between 1 and 5")
 )
 
 const (

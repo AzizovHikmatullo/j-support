@@ -159,6 +159,44 @@ func (r *repository) ChangeStatus(ctx context.Context, status string, ticketID u
 	return nil
 }
 
+func (r *repository) CreateRating(ctx context.Context, rating *Rating) error {
+	query := `
+        INSERT INTO ticket_ratings(ticket_id, contact_id, score)
+        VALUES ($1, $2, $3)
+        RETURNING id
+    `
+
+	err := r.db.QueryRowxContext(ctx, query,
+		rating.TicketID,
+		rating.ContactID,
+		rating.Score,
+	).Scan(&rating.ID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *repository) GetRating(ctx context.Context, ticketID uuid.UUID) (Rating, error) {
+	var rating Rating
+
+	query := `
+        SELECT id, ticket_id, contact_id, score
+        FROM ticket_ratings
+        WHERE ticket_id = $1
+    `
+
+	err := r.db.GetContext(ctx, &rating, query, ticketID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Rating{}, ErrNotFound
+		}
+		return Rating{}, err
+	}
+
+	return rating, nil
+}
+
 func (r *repository) CreateMessage(ctx context.Context, tx *sqlx.Tx, message *Message) error {
 	query := `
 		INSERT INTO messages(id, ticket_id, sender_id, sender_type, content) 
