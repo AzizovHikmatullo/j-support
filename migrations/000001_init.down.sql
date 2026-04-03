@@ -1,5 +1,5 @@
-drop table if exists bot_steps;
 drop table if exists bot_sessions;
+drop table if exists bot_steps;
 drop table if exists bot_scenarios;
 drop table if exists messages;
 drop table if exists tickets;

@@ -12,7 +12,7 @@ create table contacts (
     user_id text unique,
     external_id text unique,
     name text,
-    phone text,
+    phone text unique,
     created_at timestamp not null default now()
 );
 
@@ -46,13 +46,16 @@ create table bot_scenarios (
 
 create table bot_steps (
     id serial primary key,
-    scenario_id int references bot_scenarios(id),
-    step_order int not null,
-    question text not null
+    scenario_id int not null references bot_scenarios(id) on delete cascade,
+    parent_id int references  bot_steps(id) on delete cascade,
+    condition text,
+    question text not null,
+    created_at timestamp not null default now()
 );
 
 create table bot_sessions (
-    ticket_id uuid primary key references tickets(id),
-    scenario_id int references bot_scenarios(id),
-    current_step int not null default 0
+    ticket_id uuid primary key references tickets(id) on delete cascade,
+    scenario_id int not null references bot_scenarios(id),
+    current_step_id int not null references bot_steps(id),
+    created_at timestamp not null default now()
 );

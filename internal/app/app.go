@@ -96,9 +96,9 @@ func (a *App) InitRoutes() {
 	categoriesRoutes := a.router.Group("/categories")
 	categoriesRoutes.Use(middleware.AuthMiddleware(a.cfg.JWT.Secret))
 	{
+		categoriesRoutes.GET("", categoriesHandler.Get)
 		categoriesRoutes.POST("", middleware.RequireRole("admin"), categoriesHandler.Create)
 		categoriesRoutes.PATCH("/:id", middleware.RequireRole("admin"), categoriesHandler.Update)
-		a.router.GET("/categories", categoriesHandler.Get)
 	}
 
 	// ---------
@@ -138,8 +138,13 @@ func (a *App) InitRoutes() {
 	{
 		scenarioRoutes.POST("", middleware.RequireRole("admin"), scenarioHandler.Create)
 		scenarioRoutes.GET("", middleware.RequireRole("admin"), scenarioHandler.GetAll)
-		scenarioRoutes.GET(":id", middleware.RequireRole("admin"), scenarioHandler.Get)
-		scenarioRoutes.PATCH(":id", middleware.RequireRole("admin"), scenarioHandler.Update)
+		scenarioRoutes.GET("/:id", middleware.RequireRole("admin"), scenarioHandler.GetByID)
+		scenarioRoutes.PATCH("/:id", middleware.RequireRole("admin"), scenarioHandler.Update)
+		scenarioRoutes.DELETE("/:id", middleware.RequireRole("admin"), scenarioHandler.Delete)
+
+		scenarioRoutes.POST("/:id/steps", middleware.RequireRole("admin"), scenarioHandler.CreateStep)
+		scenarioRoutes.PATCH("/:id/steps/:stepID", middleware.RequireRole("admin"), scenarioHandler.UpdateStep)
+		scenarioRoutes.DELETE("/:id/steps/:stepID", middleware.RequireRole("admin"), scenarioHandler.DeleteStep)
 	}
 
 	ticketsService.SetScenarioService(scenarioService)

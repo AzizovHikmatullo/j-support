@@ -1,6 +1,8 @@
 package categories
 
-import "context"
+import (
+	"context"
+)
 
 type Repository interface {
 	Create(ctx context.Context, name, destination string) (Category, error)

@@ -37,44 +37,7 @@ func (r *postgresRepo) CreateScenario(ctx context.Context, categoryID int) (Scen
 	return scenario, nil
 }
 
-func (r *postgresRepo) CreateSteps(ctx context.Context, scenarioID int, req []StepRequest) ([]Step, error) {
-	steps := make([]Step, 0, len(req))
-	questions := make([]string, 0, len(req))
-
-	builder := squirrel.Insert("bot_steps").
-		Columns("scenario_id", "step_order", "question").
-		PlaceholderFormat(squirrel.Dollar).
-		Suffix("RETURNING id")
-
-	for i, step := range req {
-		builder = builder.Values(scenarioID, i+1, step.Question)
-		questions = append(questions, step.Question)
-	}
-
-	query, args, err := builder.ToSql()
-	if err != nil {
-		return nil, err
-	}
-
-	var ids []int
-	err = r.db.SelectContext(ctx, &ids, query, args...)
-	if err != nil {
-		return nil, ErrCreateSteps
-	}
-
-	for i, id := range ids {
-		steps = append(steps, Step{
-			ID:         id,
-			ScenarioID: scenarioID,
-			StepOrder:  i + 1,
-			Question:   questions[i],
-		})
-	}
-
-	return steps, nil
-}
-
-func (r *postgresRepo) Get(ctx context.Context, id int) (Scenario, error) {
+func (r *postgresRepo) GetByID(ctx context.Context, id int) (Scenario, error) {
 	var scenario Scenario
 
 	query := `
@@ -85,6 +48,9 @@ func (r *postgresRepo) Get(ctx context.Context, id int) (Scenario, error) {
 
 	err := r.db.GetContext(ctx, &scenario, query, id)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Scenario{}, ErrScenarioNotFound
+		}
 		return Scenario{}, ErrGetScenario
 	}
 
@@ -97,6 +63,7 @@ func (r *postgresRepo) GetAll(ctx context.Context) ([]Scenario, error) {
 	query := `
 		SELECT *
 		FROM bot_scenarios
+		ORDER BY id
 	`
 
 	err := r.db.SelectContext(ctx, &scenarios, query)
@@ -108,71 +75,34 @@ func (r *postgresRepo) GetAll(ctx context.Context) ([]Scenario, error) {
 }
 
 func (r *postgresRepo) Update(ctx context.Context, scenarioID int, req UpdateScenarioRequest) (Scenario, error) {
-	tx, err := r.db.BeginTxx(ctx, nil)
+	var scenario Scenario
+
+	query := `
+        UPDATE bot_scenarios
+        SET is_active = $2
+        WHERE id = $1
+        RETURNING *
+    `
+
+	err := r.db.QueryRowxContext(ctx, query,
+		scenarioID,
+		req.IsActive,
+	).StructScan(&scenario)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Scenario{}, ErrScenarioNotFound
+	}
+	return scenario, err
+}
+
+func (r *postgresRepo) Delete(ctx context.Context, id int) error {
+	query := `DELETE FROM bot_scenarios WHERE id = $1`
+
+	_, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
-		return Scenario{}, err
-	}
-	defer tx.Rollback()
-
-	updateBuilder := squirrel.Update("bot_scenarios").
-		PlaceholderFormat(squirrel.Dollar).
-		Where(squirrel.Eq{"id": scenarioID})
-
-	if req.CategoryID != nil {
-		updateBuilder = updateBuilder.Set("category_id", *req.CategoryID)
+		return ErrDeleteScenario
 	}
 
-	if req.IsActive != nil {
-		updateBuilder = updateBuilder.Set("is_active", *req.IsActive)
-	}
-
-	query, args, err := updateBuilder.ToSql()
-	if err != nil {
-		return Scenario{}, err
-	}
-
-	if len(args) > 0 {
-		_, err = tx.ExecContext(ctx, query, args...)
-		if err != nil {
-			return Scenario{}, err
-		}
-	}
-
-	if req.Steps != nil {
-		_, err := tx.ExecContext(ctx,
-			`DELETE FROM bot_steps WHERE scenario_id=$1`,
-			scenarioID,
-		)
-		if err != nil {
-			return Scenario{}, err
-		}
-
-		if len(*req.Steps) > 0 {
-			insertBuilder := squirrel.Insert("bot_steps").
-				Columns("scenario_id", "step_order", "question").
-				PlaceholderFormat(squirrel.Dollar)
-
-			for i, step := range *req.Steps {
-				insertBuilder = insertBuilder.Values(scenarioID, i+1, step.Question)
-			}
-
-			query, args, err := insertBuilder.ToSql()
-			if err != nil {
-				return Scenario{}, err
-			}
-
-			_, err = tx.ExecContext(ctx, query, args...)
-			if err != nil {
-				return Scenario{}, err
-			}
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return Scenario{}, err
-	}
-
-	return r.Get(ctx, scenarioID)
+	return nil
 }
 
 func (r *postgresRepo) GetActiveScenario(ctx context.Context, categoryID int) (Scenario, error) {
@@ -195,14 +125,35 @@ func (r *postgresRepo) GetActiveScenario(ctx context.Context, categoryID int) (S
 	return scenario, nil
 }
 
-func (r *postgresRepo) GetSteps(ctx context.Context, scenarioID int) ([]Step, error) {
+func (r *postgresRepo) CreateStep(ctx context.Context, scenarioID int, req CreateStepRequest) (Step, error) {
+	var step Step
+
+	query := `
+        INSERT INTO bot_steps(scenario_id, parent_id, condition, question)
+        VALUES ($1, $2, $3, $4)
+        RETURNING *
+    `
+
+	err := r.db.QueryRowxContext(ctx, query,
+		scenarioID,
+		req.ParentID,
+		req.Condition,
+		req.Question,
+	).StructScan(&step)
+	if err != nil {
+		return Step{}, ErrCreateStep
+	}
+	return step, err
+}
+
+func (r *postgresRepo) GetAllSteps(ctx context.Context, scenarioID int) ([]Step, error) {
 	var steps []Step
 
 	query := `
 		SELECT *
 		FROM bot_steps
 		WHERE scenario_id = $1
-		ORDER BY step_order
+		ORDER BY id
 	`
 
 	err := r.db.SelectContext(ctx, &steps, query, scenarioID)
@@ -213,13 +164,112 @@ func (r *postgresRepo) GetSteps(ctx context.Context, scenarioID int) ([]Step, er
 	return steps, nil
 }
 
-func (r *postgresRepo) CreateSession(ctx context.Context, ticketID uuid.UUID, scenarioID int) error {
+func (r *postgresRepo) GetStep(ctx context.Context, stepID int) (Step, error) {
+	var step Step
+
 	query := `
-		INSERT INTO bot_sessions(ticket_id, scenario_id, current_step)
-		VALUES ($1, $2, 0)
+        SELECT *
+        FROM bot_steps
+        WHERE id = $1
+    `
+
+	err := r.db.GetContext(ctx, &step, query, stepID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Step{}, ErrStepNotFound
+		}
+		return Step{}, ErrGetStep
+	}
+	return step, err
+}
+
+func (r *postgresRepo) GetRootStep(ctx context.Context, scenarioID int) (Step, error) {
+	var step Step
+
+	query := `
+        SELECT *
+        FROM bot_steps
+        WHERE scenario_id = $1 AND parent_id IS NULL
+    `
+
+	err := r.db.GetContext(ctx, &step, query, scenarioID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Step{}, ErrStepNotFound
+		}
+		return Step{}, ErrGetRootStep
+	}
+	return step, nil
+}
+
+func (r *postgresRepo) GetChildren(ctx context.Context, parentID int) ([]Step, error) {
+	var steps []Step
+
+	query := `
+        SELECT *
+        FROM bot_steps
+        WHERE parent_id = $1
+    `
+
+	err := r.db.SelectContext(ctx, &steps, query, parentID)
+	if err != nil {
+		return nil, ErrGetChildren
+	}
+	return steps, err
+}
+
+func (r *postgresRepo) UpdateStep(ctx context.Context, stepID int, req UpdateStepRequest) (Step, error) {
+	var step Step
+
+	builder := squirrel.Update("bot_steps").
+		PlaceholderFormat(squirrel.Dollar).
+		Where(squirrel.Eq{"id": stepID})
+
+	if req.Condition != nil {
+		builder = builder.Set("condition", req.Condition)
+	}
+
+	if req.Question != nil {
+		builder = builder.Set("question", req.Question)
+	}
+
+	builder = builder.Suffix("RETURNING *")
+
+	query, args, err := builder.ToSql()
+	if err != nil {
+		return Step{}, err
+	}
+
+	err = r.db.QueryRowxContext(ctx, query, args...).StructScan(&step)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Step{}, ErrStepNotFound
+		}
+		return Step{}, ErrUpdateStep
+	}
+
+	return step, nil
+}
+
+func (r *postgresRepo) DeleteStep(ctx context.Context, stepID int) error {
+	query := `DELETE FROM bot_steps WHERE id = $1`
+
+	_, err := r.db.ExecContext(ctx, query, stepID)
+	if err != nil {
+		return ErrDeleteStep
+	}
+
+	return nil
+}
+
+func (r *postgresRepo) CreateSession(ctx context.Context, ticketID uuid.UUID, scenarioID, stepID int) error {
+	query := `
+		INSERT INTO bot_sessions(ticket_id, scenario_id, current_step_id)
+		VALUES ($1, $2, $3)
 	`
 
-	err := r.db.QueryRowxContext(ctx, query, ticketID, scenarioID).Err()
+	_, err := r.db.ExecContext(ctx, query, ticketID, scenarioID, stepID)
 	if err != nil {
 		return ErrCreateSession
 	}
@@ -247,20 +297,17 @@ func (r *postgresRepo) GetSession(ctx context.Context, ticketID uuid.UUID) (Sess
 	return session, nil
 }
 
-func (r *postgresRepo) UpdateSessionStep(ctx context.Context, ticketID uuid.UUID, nextStep int) (Session, error) {
-	var session Session
-
+func (r *postgresRepo) UpdateSession(ctx context.Context, ticketID uuid.UUID, nextStepID int) error {
 	query := `
-		UPDATE bot_sessions 
-		SET current_step = $1 
-		WHERE ticket_id = $2
-		RETURNING *
-	`
+        UPDATE bot_sessions
+        SET current_step_id = $2
+        WHERE ticket_id = $1
+    `
 
-	err := r.db.QueryRowxContext(ctx, query, nextStep, ticketID).StructScan(&session)
+	_, err := r.db.ExecContext(ctx, query, ticketID, nextStepID)
 	if err != nil {
-		return Session{}, ErrUpdateSession
+		return ErrUpdateSession
 	}
 
-	return session, nil
+	return nil
 }

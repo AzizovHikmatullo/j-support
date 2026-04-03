@@ -2,6 +2,7 @@ package tickets
 
 import (
 	"context"
+
 	"github.com/AzizovHikmatullo/j-support/internal/categories"
 	"github.com/AzizovHikmatullo/j-support/internal/ws"
 	"github.com/google/uuid"
@@ -24,7 +25,7 @@ type Repository interface {
 
 type scenarioService interface {
 	StartIfExists(ctx context.Context, ticketID uuid.UUID, categoryID int) error
-	HandleMessage(ctx context.Context, ticketID uuid.UUID) (*string, error)
+	HandleMessage(ctx context.Context, ticketID uuid.UUID, answer string) (*string, error)
 }
 
 type service struct {
@@ -234,7 +235,7 @@ func (s *service) CreateMessage(ctx context.Context, ticketID uuid.UUID, senderI
 	}
 
 	if ticket.Status == statusPending && senderType == "user" {
-		nextQuestion, err := s.scenarioService.HandleMessage(ctx, ticketID)
+		nextQuestion, err := s.scenarioService.HandleMessage(ctx, ticketID, content)
 		if err != nil {
 			return message, nil
 		}
