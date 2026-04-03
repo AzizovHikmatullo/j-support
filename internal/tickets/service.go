@@ -165,7 +165,17 @@ func (s *service) ChangeAssigned(ctx context.Context, userID int, role string, t
 		return Ticket{}, ErrClosedTicket
 	}
 
-	return s.repo.ChangeAssigned(ctx, ticket.ID, assignedTo)
+	newTicket, err := s.repo.ChangeAssigned(ctx, ticket.ID, assignedTo)
+
+	event := ws.Event{
+		Type:    "assigned_changed",
+		Payload: map[string]any{"ticket_id": ticketID, "assigned_to": assignedTo},
+	}
+	if err = s.publisher.PublishToTicket(ticketID, event); err != nil {
+		return Ticket{}, err
+	}
+
+	return newTicket, nil
 }
 
 func (s *service) ChangeStatus(ctx context.Context, userID int, role string, ticketID uuid.UUID, status string) error {
@@ -193,14 +203,12 @@ func (s *service) ChangeStatus(ctx context.Context, userID int, role string, tic
 		return err
 	}
 
-	if status == statusClosed {
-		event := ws.Event{
-			Type:    "ticket_closed",
-			Payload: map[string]any{"ticket_id": ticketID},
-		}
-		if err = s.publisher.PublishToTicket(ticketID, event); err != nil {
-			return err
-		}
+	event := ws.Event{
+		Type:    "status_changed",
+		Payload: map[string]any{"ticket_id": ticketID, "status": status},
+	}
+	if err = s.publisher.PublishToTicket(ticketID, event); err != nil {
+		return err
 	}
 
 	return nil
