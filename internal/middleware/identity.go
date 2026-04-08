@@ -76,6 +76,7 @@ func resolveFromJWT(c *gin.Context, tokenStr, secret string) (channel.Identity, 
 	return channel.Identity{
 		ChannelType: channel.ChannelApp,
 		ID:          strconv.Itoa(claims.UserID),
+		Role:        claims.Role,
 	}, nil
 }
 
@@ -85,6 +86,7 @@ func resolveFromTelegramID(c *gin.Context, tgID string) (channel.Identity, error
 	return channel.Identity{
 		ChannelType: channel.ChannelTelegram,
 		ID:          tgID,
+		Role:        "user",
 	}, nil
 }
 
@@ -94,5 +96,6 @@ func resolveFromSessionToken(c *gin.Context, token string) (channel.Identity, er
 	return channel.Identity{
 		ChannelType: channel.ChannelWeb,
 		ID:          token,
+		Role:        "user",
 	}, nil
 }

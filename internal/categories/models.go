@@ -35,3 +35,7 @@ var destinationMapping = map[string]string{
 	"client": "user",
 	"driver": "driver",
 }
+
+var (
+	ErrUnauthorized = errors.New("unauthorized")
+)

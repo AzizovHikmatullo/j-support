@@ -13,6 +13,7 @@ const (
 type Identity struct {
 	ChannelType string
 	ID          string
+	Role        string
 }
 
 type InitWebRequest struct {

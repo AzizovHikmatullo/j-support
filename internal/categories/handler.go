@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/AzizovHikmatullo/j-support/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -42,13 +43,13 @@ func (h *handler) Create(c *gin.Context) {
 }
 
 func (h *handler) Get(c *gin.Context) {
-	role := c.GetString("role")
-
-	if role == "" {
-		role = "user"
+	identity, ok := middleware.GetIdentity(c)
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": ErrUnauthorized.Error()})
+		return
 	}
 
-	categories, err := h.service.Get(c.Request.Context(), role)
+	categories, err := h.service.Get(c.Request.Context(), identity.Role)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
