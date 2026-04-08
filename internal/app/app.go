@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/AzizovHikmatullo/j-support/internal/activity_log"
 	"github.com/AzizovHikmatullo/j-support/internal/categories"
 	"github.com/AzizovHikmatullo/j-support/internal/channel"
 	channelApp "github.com/AzizovHikmatullo/j-support/internal/channel/app"
@@ -94,11 +95,26 @@ func (a *App) InitRoutes() {
 	categoriesHandler := categories.NewHandler(categoriesService)
 
 	categoriesRoutes := a.router.Group("/categories")
-	categoriesRoutes.Use(middleware.AuthMiddleware(a.cfg.JWT.Secret))
+	categoriesRoutes.Use(middleware.ChannelIdentityMiddleware(a.cfg.JWT.Secret))
 	{
 		categoriesRoutes.GET("", categoriesHandler.Get)
 		categoriesRoutes.POST("", middleware.RequireRole("admin"), categoriesHandler.Create)
 		categoriesRoutes.PATCH("/:id", middleware.RequireRole("admin"), categoriesHandler.Update)
+	}
+
+	// ---------
+	// ACTIVITY_LOG
+	// ----------
+
+	activityRepo := activity_log.NewRepository(a.db)
+	activityService := activity_log.NewService(activityRepo)
+	activityHandler := activity_log.NewHandler(activityService)
+
+	activityRoutes := a.router.Group("/activity")
+	activityRoutes.Use(middleware.AuthMiddleware(a.cfg.JWT.Secret))
+	{
+		activityRoutes.GET("", middleware.RequireRole("admin"), activityHandler.GetAll)
+		activityRoutes.GET("/:id", middleware.RequireRole("admin"), activityHandler.GetByTicket)
 	}
 
 	// ---------
@@ -122,7 +138,7 @@ func (a *App) InitRoutes() {
 	// ----------
 
 	ticketsRepo := tickets.NewRepository(a.db)
-	ticketsService := tickets.NewService(ticketsRepo, categoriesRepo, publisher, nil)
+	ticketsService := tickets.NewService(ticketsRepo, categoriesRepo, publisher, nil, activityService)
 	ticketsHandler := tickets.NewHandler(ticketsService, registry)
 
 	// ---------

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/AzizovHikmatullo/j-support/internal/activity_log"
 	"github.com/AzizovHikmatullo/j-support/internal/categories"
 	"github.com/AzizovHikmatullo/j-support/internal/ws"
 	"github.com/google/uuid"
@@ -34,17 +35,19 @@ type scenarioService interface {
 
 type service struct {
 	repo            Repository
-	categoryRepo    categories.Repository
 	scenarioService scenarioService
+	activityLog     activity_log.Service
+	categoryRepo    categories.Repository
 	publisher       ws.Publisher
 }
 
-func NewService(repo Repository, categoryRepo categories.Repository, pub ws.Publisher, botService scenarioService) Service {
+func NewService(repo Repository, categoryRepo categories.Repository, pub ws.Publisher, botService scenarioService, al activity_log.Service) Service {
 	return &service{
 		repo:            repo,
 		categoryRepo:    categoryRepo,
 		publisher:       pub,
 		scenarioService: botService,
+		activityLog:     al,
 	}
 }
 
@@ -90,6 +93,14 @@ func (s *service) Create(ctx context.Context, contactID int, role string, source
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}
+
+	s.activityLog.Log(ctx, activity_log.LogEntry{
+		TicketID:  ticket.ID,
+		ActorID:   contactID,
+		ActorType: role,
+		Action:    activity_log.ActionCreated,
+		Payload:   activity_log.Payload{"category_id": req.CategoryID, "source": source},
+	})
 
 	if err = s.scenarioService.StartIfExists(ctx, ticket.ID, category.ID); err != nil {
 		return nil, err
@@ -167,6 +178,14 @@ func (s *service) ChangeAssigned(ctx context.Context, userID int, role string, t
 
 	newTicket, err := s.repo.ChangeAssigned(ctx, ticket.ID, assignedTo)
 
+	s.activityLog.Log(ctx, activity_log.LogEntry{
+		TicketID:  ticketID,
+		ActorID:   userID,
+		ActorType: role,
+		Action:    activity_log.ActionAssigned,
+		Payload:   activity_log.Payload{"assigned_to": assignedTo},
+	})
+
 	event := ws.Event{
 		Type:    "assigned_changed",
 		Payload: map[string]any{"ticket_id": ticketID, "assigned_to": assignedTo},
@@ -188,6 +207,8 @@ func (s *service) ChangeStatus(ctx context.Context, userID int, role string, tic
 		return err
 	}
 
+	prevStatus := ticket.Status
+
 	if role == "user" && (ticket.ContactID != userID || status != statusClosed) {
 		return ErrForbidden
 	}
@@ -202,6 +223,14 @@ func (s *service) ChangeStatus(ctx context.Context, userID int, role string, tic
 	if err != nil {
 		return err
 	}
+
+	s.activityLog.Log(ctx, activity_log.LogEntry{
+		TicketID:  ticketID,
+		ActorID:   userID,
+		ActorType: role,
+		Action:    activity_log.ActionStatusChanged,
+		Payload:   activity_log.Payload{"from": prevStatus, "to": status},
+	})
 
 	event := ws.Event{
 		Type:    "status_changed",
@@ -248,6 +277,14 @@ func (s *service) RateTicket(ctx context.Context, contactID int, ticketID uuid.U
 	if err = s.repo.CreateRating(ctx, rating); err != nil {
 		return Rating{}, err
 	}
+
+	s.activityLog.Log(ctx, activity_log.LogEntry{
+		TicketID:  ticketID,
+		ActorID:   contactID,
+		ActorType: activity_log.ActorUser,
+		Action:    activity_log.ActionRated,
+		Payload:   activity_log.Payload{"score": req.Score},
+	})
 
 	return *rating, nil
 }
@@ -325,6 +362,14 @@ func (s *service) CreateMessage(ctx context.Context, ticketID uuid.UUID, senderI
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}
+
+	s.activityLog.Log(ctx, activity_log.LogEntry{
+		TicketID:  ticketID,
+		ActorID:   senderID,
+		ActorType: senderType,
+		Action:    activity_log.ActionMessageSent,
+		Payload:   activity_log.Payload{"message": message.Content},
+	})
 
 	return message, nil
 }

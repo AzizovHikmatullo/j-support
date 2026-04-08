@@ -66,3 +66,13 @@ create table bot_sessions (
     current_step_id int not null references bot_steps(id),
     created_at timestamp not null default now()
 );
+
+CREATE TABLE activity_log (
+    id serial primary key,
+    ticket_id uuid not null references tickets(id) on delete cascade,
+    actor_id int not null,
+    actor_type text not null,
+    action text not null,
+    payload jsonb,
+    created_at timestamp not null default now()
+);

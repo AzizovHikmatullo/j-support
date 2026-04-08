@@ -6,3 +6,4 @@ drop table if exists ticket_ratings;
 drop table if exists tickets;
 drop table if exists categories;
 drop table if exists contacts;
+drop table if exists activity_log;
