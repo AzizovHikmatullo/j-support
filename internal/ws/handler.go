@@ -3,23 +3,37 @@ package ws
 import (
 	"net/http"
 
+	"github.com/AzizovHikmatullo/j-support/internal/config"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return r.Header.Get("Origin") == "http://localhost:5500"
-	},
-}
-
 type WSHandler struct {
 	hub *Hub
+	cfg *config.Config
 }
 
-func NewWSHandler(hub *Hub) *WSHandler {
-	return &WSHandler{hub: hub}
+func NewWSHandler(hub *Hub, cfg *config.Config) *WSHandler {
+	return &WSHandler{
+		hub: hub,
+		cfg: cfg,
+	}
+}
+
+func (h *WSHandler) getUpgrader() websocket.Upgrader {
+	return websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			origin := r.Header.Get("Origin")
+
+			for _, o := range h.cfg.WS.AllowedOrigins {
+				if o == origin {
+					return true
+				}
+			}
+			return false
+		},
+	}
 }
 
 func (h *WSHandler) ServeTicketWS(c *gin.Context) {
@@ -28,6 +42,8 @@ func (h *WSHandler) ServeTicketWS(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid ticket id"})
 		return
 	}
+
+	upgrader := h.getUpgrader()
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {

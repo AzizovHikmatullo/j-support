@@ -25,6 +25,9 @@ type Config struct {
 	CORS struct {
 		AllowedOrigins []string
 	}
+	WS struct {
+		AllowedOrigins []string
+	}
 }
 
 func LoadConfig() (*Config, error) {
@@ -45,6 +48,8 @@ func LoadConfig() (*Config, error) {
 	cfg.JWT.Secret = os.Getenv("JWT_SECRET")
 
 	cfg.CORS.AllowedOrigins = strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), ",")
+
+	cfg.WS.AllowedOrigins = strings.Split(os.Getenv("WS_ORIGINS"), ",")
 
 	return cfg, nil
 }
