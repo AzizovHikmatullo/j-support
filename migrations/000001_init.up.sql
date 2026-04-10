@@ -22,7 +22,6 @@ create table tickets (
     contact_id int not null references contacts(id),
     assigned_id integer,
     status text not null,
-    subject text not null,
     source text not null,
     created_at timestamp not null default now(),
     updated_at timestamp not null default now()

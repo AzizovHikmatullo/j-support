@@ -28,7 +28,7 @@ type Repository interface {
 }
 
 type scenarioService interface {
-	StartIfExists(ctx context.Context, ticketID uuid.UUID, categoryID int) error
+	StartIfExists(ctx context.Context, ticketID uuid.UUID, categoryID int) (*Message, []string, error)
 	HandleMessage(ctx context.Context, ticketID uuid.UUID, answer string) (*string, error)
 	GetButtonsForCurrentStep(ctx context.Context, ticketID uuid.UUID) ([]string, error)
 }
@@ -55,7 +55,7 @@ func (s *service) SetScenarioService(botService scenarioService) {
 	s.scenarioService = botService
 }
 
-func (s *service) Create(ctx context.Context, contactID int, role string, source string, req CreateTicketRequest) (*Ticket, error) {
+func (s *service) Create(ctx context.Context, contactID int, role string, source string, req CreateTicketRequest) (*CreateTicketResponse, error) {
 	tx, err := s.repo.BeginTxx(ctx)
 	if err != nil {
 		return nil, ErrUndefined
@@ -83,13 +83,6 @@ func (s *service) Create(ctx context.Context, contactID int, role string, source
 		return nil, err
 	}
 
-	message := NewMessage(ticket.ID, contactID, role, req.Message)
-
-	err = s.repo.CreateMessage(ctx, tx, message)
-	if err != nil {
-		return nil, err
-	}
-
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -102,11 +95,23 @@ func (s *service) Create(ctx context.Context, contactID int, role string, source
 		Payload:   activity_log.Payload{"category_id": req.CategoryID, "source": source},
 	})
 
-	if err = s.scenarioService.StartIfExists(ctx, ticket.ID, category.ID); err != nil {
+	firstBotMessage, buttons, err := s.scenarioService.StartIfExists(ctx, ticket.ID, category.ID)
+	if err != nil {
 		return nil, err
 	}
 
-	return ticket, nil
+	updatedTicket, err := s.repo.GetByID(ctx, ticket.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &CreateTicketResponse{
+		Ticket: &updatedTicket,
+		FirstMessage: &MessageWithButtons{
+			Message: firstBotMessage,
+			Buttons: buttons,
+		},
+	}, nil
 }
 
 func (s *service) Get(ctx context.Context, role string, userID int) ([]Ticket, error) {

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/AzizovHikmatullo/j-support/internal/tickets"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -21,7 +22,7 @@ type Service interface {
 	UpdateStep(ctx context.Context, scenarioID, stepID int, req UpdateStepRequest) (Step, error)
 	DeleteStep(ctx context.Context, scenarioID, stepID int) error
 
-	StartIfExists(ctx context.Context, ticketID uuid.UUID, categoryID int) error
+	StartIfExists(ctx context.Context, ticketID uuid.UUID, categoryID int) (*tickets.Message, []string, error)
 	HandleMessage(ctx context.Context, ticketID uuid.UUID, answer string) (*string, error)
 }
 

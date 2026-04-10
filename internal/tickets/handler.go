@@ -12,7 +12,7 @@ import (
 )
 
 type Service interface {
-	Create(ctx context.Context, contactID int, role string, source string, req CreateTicketRequest) (*Ticket, error)
+	Create(ctx context.Context, contactID int, role string, source string, req CreateTicketRequest) (*CreateTicketResponse, error)
 	Get(ctx context.Context, role string, userID int) ([]Ticket, error)
 	GetByID(ctx context.Context, userID int, role string, ticketID uuid.UUID) (Ticket, error)
 	GetMine(ctx context.Context, contactID int, ticketID uuid.UUID) (Ticket, error)

@@ -21,8 +21,8 @@ func NewRepository(db *sqlx.DB) Repository {
 
 func (r *repository) Create(ctx context.Context, tx *sqlx.Tx, ticket *Ticket) error {
 	query := `
- 		INSERT INTO tickets(id, category_id, contact_id, status, subject, source) 
- 		VALUES ($1, $2, $3, $4, $5, $6) 
+ 		INSERT INTO tickets(id, category_id, contact_id, status, source) 
+ 		VALUES ($1, $2, $3, $4, $5) 
  		RETURNING created_at, updated_at
 	`
 
@@ -31,7 +31,6 @@ func (r *repository) Create(ctx context.Context, tx *sqlx.Tx, ticket *Ticket) er
 		ticket.CategoryID,
 		ticket.ContactID,
 		ticket.Status,
-		ticket.Subject,
 		ticket.Source,
 	).Scan(&ticket.CreatedAt, &ticket.UpdatedAt)
 	if err != nil {

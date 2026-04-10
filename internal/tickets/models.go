@@ -13,7 +13,6 @@ type Ticket struct {
 	ContactID  int       `json:"creator_id" db:"contact_id"`
 	AssignedTo *int      `json:"assigned_to" db:"assigned_id"`
 	Status     string    `json:"status" db:"status"`
-	Subject    string    `json:"subject" db:"subject"`
 	Source     string    `json:"source" db:"source"`
 	CreatedAt  time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at" db:"updated_at"`
@@ -37,9 +36,17 @@ type Rating struct {
 }
 
 type CreateTicketRequest struct {
-	CategoryID int    `json:"category_id" binding:"required"`
-	Message    string `json:"message" binding:"required"`
-	Subject    string `json:"subject" binding:"required"`
+	CategoryID int `json:"category_id" binding:"required"`
+}
+
+type CreateTicketResponse struct {
+	*Ticket
+	FirstMessage *MessageWithButtons `json:"first_message,omitempty"`
+}
+
+type MessageWithButtons struct {
+	*Message
+	Buttons []string `json:"buttons,omitempty"`
 }
 
 type ChangeAssignedRequest struct {
@@ -91,7 +98,6 @@ func NewTicket(contactID int, source string, req CreateTicketRequest) *Ticket {
 		CategoryID: req.CategoryID,
 		ContactID:  contactID,
 		Status:     statusPending,
-		Subject:    req.Subject,
 		Source:     source,
 	}
 }

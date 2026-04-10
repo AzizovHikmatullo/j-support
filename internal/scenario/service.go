@@ -204,39 +204,43 @@ func (s *service) DeleteStep(ctx context.Context, scenarioID, stepID int) error 
 	return s.repo.DeleteStep(ctx, stepID)
 }
 
-func (s *service) StartIfExists(ctx context.Context, ticketID uuid.UUID, categoryID int) error {
+func (s *service) StartIfExists(ctx context.Context, ticketID uuid.UUID, categoryID int) (*tickets.Message, []string, error) {
 	scenario, err := s.repo.GetActiveScenario(ctx, categoryID)
 	if errors.Is(err, ErrScenarioNotFound) {
-		return s.ticketService.ChangeStatus(ctx, 0, "bot", ticketID, "open")
+		return nil, nil, s.ticketService.ChangeStatus(ctx, 0, "bot", ticketID, "open")
 	}
 
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	rootStep, err := s.repo.GetRootStep(ctx, scenario.ID)
 	if errors.Is(err, ErrStepNotFound) {
-		return s.ticketService.ChangeStatus(ctx, 0, "bot", ticketID, "open")
+		return nil, nil, s.ticketService.ChangeStatus(ctx, 0, "bot", ticketID, "open")
 	}
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	if err := s.repo.CreateSession(ctx, ticketID, scenario.ID, rootStep.ID); err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	if err := s.ticketService.ChangeStatus(ctx, 0, "bot", ticketID, "pending"); err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	buttons, err := s.GetButtonsForCurrentStep(ctx, ticketID)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
-	_, err = s.ticketService.CreateMessageWithButtons(ctx, ticketID, 0, "bot", rootStep.Question, buttons)
-	return err
+	msg, err := s.ticketService.CreateMessageWithButtons(ctx, ticketID, 0, "bot", rootStep.Question, buttons)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return msg, buttons, nil
 }
 
 func (s *service) HandleMessage(ctx context.Context, ticketID uuid.UUID, answer string) (*string, error) {
