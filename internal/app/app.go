@@ -67,20 +67,7 @@ func (a *App) Run() {
 }
 
 func (a *App) InitRoutes() {
-	a.router.Use(cors.New(cors.Config{
-		AllowOrigins: a.cfg.CORS.AllowedOrigins,
-		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders: []string{
-			"Origin",
-			"Content-Type",
-			"Authorization",
-			"X-Session-Token",
-			"X-Telegram-ID",
-		},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}))
+	a.RegisterCORS()
 
 	a.router.Use(middleware.LoggerMiddleware(a.logger))
 
@@ -199,7 +186,7 @@ func (a *App) InitRoutes() {
 	// WEBSOCKET
 	// ----------
 
-	wsHandler := ws.NewWSHandler(a.hub)
+	wsHandler := ws.NewWSHandler(a.hub, a.cfg)
 	wsRoutes := a.router.Group("/ws")
 	{
 		wsRoutes.GET("/tickets/:id", wsHandler.ServeTicketWS)
@@ -217,4 +204,15 @@ func (a *App) InitRoutes() {
 	}
 
 	a.logger.Info("All routes created")
+}
+
+func (a *App) RegisterCORS() {
+	a.router.Use(cors.New(cors.Config{
+		AllowOrigins:     a.cfg.CORS.AllowedOrigins,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Session-Token", "X-Telegram-ID"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 }
