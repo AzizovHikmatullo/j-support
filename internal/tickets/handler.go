@@ -20,6 +20,7 @@ type Service interface {
 	ChangeStatus(ctx context.Context, userID int, role string, ticketID uuid.UUID, status string) error
 	RateTicket(ctx context.Context, contactID int, ticketID uuid.UUID, req CreateRatingRequest) (Rating, error)
 	CreateMessage(ctx context.Context, ticketID uuid.UUID, senderID int, senderType, content string) (*Message, error)
+	CreateMessageWithButtons(ctx context.Context, ticketID uuid.UUID, senderID int, senderType, content string, buttons []string) (*Message, error)
 	GetMessages(ctx context.Context, userID int, role string, ticketID uuid.UUID) ([]Message, error)
 	SetScenarioService(botService scenarioService)
 }

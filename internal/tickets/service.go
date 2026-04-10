@@ -3,7 +3,6 @@ package tickets
 import (
 	"context"
 	"errors"
-
 	"github.com/AzizovHikmatullo/j-support/internal/activity_log"
 	"github.com/AzizovHikmatullo/j-support/internal/categories"
 	"github.com/AzizovHikmatullo/j-support/internal/ws"
@@ -31,6 +30,7 @@ type Repository interface {
 type scenarioService interface {
 	StartIfExists(ctx context.Context, ticketID uuid.UUID, categoryID int) error
 	HandleMessage(ctx context.Context, ticketID uuid.UUID, answer string) (*string, error)
+	GetButtonsForCurrentStep(ctx context.Context, ticketID uuid.UUID) ([]string, error)
 }
 
 type service struct {
@@ -306,56 +306,19 @@ func (s *service) CreateMessage(ctx context.Context, ticketID uuid.UUID, senderI
 		return nil, err
 	}
 
-	if senderType == "user" && ticket.ContactID != senderID {
-		return nil, ErrForbidden
-	}
-
-	if senderType == "support" && ticket.AssignedTo == nil {
-		return nil, ErrSupportCannotWrite
-	}
-
-	if senderType == "support" && ticket.AssignedTo != nil {
-		if *ticket.AssignedTo != senderID {
-			return nil, ErrForbidden
-		}
-	}
-
-	message := NewMessage(ticketID, senderID, senderType, content)
-
-	err = s.repo.CreateMessage(ctx, tx, message)
+	message, err := s.saveMessage(ctx, tx, &ticket, senderID, senderType, content)
 	if err != nil {
 		return nil, err
 	}
 
-	event := ws.Event{
-		Type:    "message_created",
-		Payload: message,
-	}
-
-	if err := s.publisher.PublishToTicket(ticket.ID, event); err != nil {
-		return nil, ErrPublishFailed
+	publishError := s.publishMessage(ticket.ID, message, nil)
+	if publishError != nil {
+		return nil, publishError
 	}
 
 	if ticket.Status == statusPending && senderType == "user" {
-		nextQuestion, err := s.scenarioService.HandleMessage(ctx, ticketID, content)
-		if err != nil {
-			return message, nil
-		}
-
-		if nextQuestion != nil {
-			botMessage := NewMessage(ticketID, 0, "bot", *nextQuestion)
-			if err = s.repo.CreateMessage(ctx, tx, botMessage); err != nil {
-				return message, nil
-			}
-
-			botEvent := ws.Event{
-				Type:    "message_created",
-				Payload: botMessage,
-			}
-
-			if err := s.publisher.PublishToTicket(ticket.ID, botEvent); err != nil {
-				return nil, ErrPublishFailed
-			}
+		if err = s.processScenario(ctx, ticket, message); err != nil {
+			return nil, err
 		}
 	}
 
@@ -363,13 +326,49 @@ func (s *service) CreateMessage(ctx context.Context, ticketID uuid.UUID, senderI
 		return nil, err
 	}
 
-	s.activityLog.Log(ctx, activity_log.LogEntry{
-		TicketID:  ticketID,
-		ActorID:   senderID,
-		ActorType: senderType,
-		Action:    activity_log.ActionMessageSent,
-		Payload:   activity_log.Payload{"message": message.Content},
-	})
+	s.logMessage(ctx, ticketID, senderID, senderType, message.Content)
+
+	return message, nil
+}
+
+func (s *service) CreateMessageWithButtons(ctx context.Context, ticketID uuid.UUID, senderID int, senderType, content string, buttons []string) (*Message, error) {
+	tx, err := s.repo.BeginTxx(ctx)
+	if err != nil {
+		return nil, ErrUndefined
+	}
+
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	ticket, err := s.repo.GetByID(ctx, ticketID)
+	if err != nil {
+		return nil, err
+	}
+
+	message, err := s.saveMessage(ctx, tx, &ticket, senderID, senderType, content)
+	if err != nil {
+		return nil, err
+	}
+
+	publishError := s.publishMessage(ticket.ID, message, buttons)
+	if publishError != nil {
+		return nil, publishError
+	}
+
+	if ticket.Status == statusPending && senderType == "user" {
+		if err = s.processScenario(ctx, ticket, message); err != nil {
+			return nil, err
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	s.logMessage(ctx, ticketID, senderID, senderType, message.Content)
 
 	return message, nil
 }
@@ -390,6 +389,76 @@ func (s *service) GetMessages(ctx context.Context, userID int, role string, tick
 	}
 
 	return messages, nil
+}
+
+func (s *service) saveMessage(ctx context.Context, tx *sqlx.Tx, ticket *Ticket, senderID int, senderType string, content string) (*Message, error) {
+	if senderType == "user" && ticket.ContactID != senderID {
+		return nil, ErrForbidden
+	}
+
+	if senderType == "support" && ticket.AssignedTo == nil {
+		return nil, ErrSupportCannotWrite
+	}
+
+	if senderType == "support" && ticket.AssignedTo != nil {
+		if *ticket.AssignedTo != senderID {
+			return nil, ErrForbidden
+		}
+	}
+
+	message := NewMessage(ticket.ID, senderID, senderType, content)
+
+	err := s.repo.CreateMessage(ctx, tx, message)
+	if err != nil {
+		return nil, err
+	}
+
+	return message, nil
+}
+
+func (s *service) publishMessage(ticketID uuid.UUID, message *Message, buttons []string) error {
+	event := ws.Event{
+		Type: "message_created",
+		Payload: map[string]any{
+			"message": message,
+			"buttons": buttons,
+		},
+	}
+
+	if err := s.publisher.PublishToTicket(ticketID, event); err != nil {
+		return ErrPublishFailed
+	}
+	return nil
+}
+
+func (s *service) processScenario(ctx context.Context, ticket Ticket, message *Message) error {
+	nextQuestion, err := s.scenarioService.HandleMessage(ctx, ticket.ID, message.Content)
+	if err != nil {
+		return nil
+	}
+
+	if nextQuestion != nil {
+		buttons, err := s.scenarioService.GetButtonsForCurrentStep(ctx, ticket.ID)
+		if err != nil {
+			return err
+		}
+
+		_, err = s.CreateMessageWithButtons(ctx, ticket.ID, 0, "bot", *nextQuestion, buttons)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *service) logMessage(ctx context.Context, ticketID uuid.UUID, actorID int, actorType string, messageContent string) {
+	s.activityLog.Log(ctx, activity_log.LogEntry{
+		TicketID:  ticketID,
+		ActorID:   actorID,
+		ActorType: actorType,
+		Action:    activity_log.ActionMessageSent,
+		Payload:   activity_log.Payload{"message": messageContent},
+	})
 }
 
 func checkAccess(userID int, role string, ticket Ticket) error {

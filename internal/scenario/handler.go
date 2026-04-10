@@ -17,6 +17,7 @@ type Service interface {
 	Delete(ctx context.Context, id int) error
 
 	CreateStep(ctx context.Context, scenarioID int, req CreateStepRequest) (Step, error)
+	GetButtonsForCurrentStep(ctx context.Context, ticketID uuid.UUID) ([]string, error)
 	UpdateStep(ctx context.Context, scenarioID, stepID int, req UpdateStepRequest) (Step, error)
 	DeleteStep(ctx context.Context, scenarioID, stepID int) error
 

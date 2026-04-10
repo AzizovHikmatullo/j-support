@@ -149,6 +149,26 @@ func (s *service) CreateStep(ctx context.Context, scenarioID int, req CreateStep
 	return s.repo.CreateStep(ctx, scenarioID, req)
 }
 
+func (s *service) GetButtonsForCurrentStep(ctx context.Context, ticketID uuid.UUID) ([]string, error) {
+	session, err := s.repo.GetSession(ctx, ticketID)
+	if err != nil {
+		return nil, err
+	}
+
+	children, err := s.repo.GetChildren(ctx, session.CurrentStepID)
+	if err != nil || len(children) == 0 {
+		return nil, err
+	}
+
+	var buttons []string
+	for _, ch := range children {
+		if ch.Condition != nil && *ch.Condition != "" {
+			buttons = append(buttons, *ch.Condition)
+		}
+	}
+	return buttons, nil
+}
+
 func (s *service) UpdateStep(ctx context.Context, scenarioID, stepID int, req UpdateStepRequest) (Step, error) {
 	step, err := s.repo.GetStep(ctx, stepID)
 	if err != nil {
@@ -210,7 +230,12 @@ func (s *service) StartIfExists(ctx context.Context, ticketID uuid.UUID, categor
 		return err
 	}
 
-	_, err = s.ticketService.CreateMessage(ctx, ticketID, 0, "bot", rootStep.Question)
+	buttons, err := s.GetButtonsForCurrentStep(ctx, ticketID)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.ticketService.CreateMessageWithButtons(ctx, ticketID, 0, "bot", rootStep.Question, buttons)
 	return err
 }
 
