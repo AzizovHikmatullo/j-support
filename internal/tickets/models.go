@@ -29,10 +29,11 @@ type Message struct {
 }
 
 type Rating struct {
-	ID        int       `db:"id"         json:"id"`
-	TicketID  uuid.UUID `db:"ticket_id"  json:"ticket_id"`
-	ContactID int       `db:"contact_id" json:"contact_id"`
-	Score     int       `db:"score"      json:"score"`
+	ID        int       `json:"id" db:"id"`
+	TicketID  uuid.UUID `json:"ticket_id" db:"ticket_id"`
+	ContactID int       `json:"contact_id" db:"contact_id"`
+	Score     int       `json:"score" db:"score"`
+	Reason    *string   `json:"reason,omitempty" db:"reason"`
 }
 
 type CreateTicketRequest struct {
@@ -62,7 +63,8 @@ type CreateMessageRequest struct {
 }
 
 type CreateRatingRequest struct {
-	Score int `json:"score" binding:"required"`
+	Score  int     `json:"score" binding:"required"`
+	Reason *string `json:"reason"`
 }
 
 var (

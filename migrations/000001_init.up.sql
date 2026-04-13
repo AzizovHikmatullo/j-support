@@ -31,7 +31,8 @@ create table ticket_ratings (
     id serial primary key ,
     ticket_id uuid not null unique references tickets(id) on delete cascade,
     contact_id int not null references contacts(id),
-    score int not null check (score between 1 and 5)
+    score int not null check (score between 1 and 5),
+    reason text
 );
 
 create table messages (

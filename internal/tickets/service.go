@@ -278,6 +278,7 @@ func (s *service) RateTicket(ctx context.Context, contactID int, ticketID uuid.U
 		TicketID:  ticketID,
 		ContactID: contactID,
 		Score:     req.Score,
+		Reason:    req.Reason,
 	}
 	if err = s.repo.CreateRating(ctx, rating); err != nil {
 		return Rating{}, err
@@ -288,7 +289,7 @@ func (s *service) RateTicket(ctx context.Context, contactID int, ticketID uuid.U
 		ActorID:   contactID,
 		ActorType: activity_log.ActorUser,
 		Action:    activity_log.ActionRated,
-		Payload:   activity_log.Payload{"score": req.Score},
+		Payload:   activity_log.Payload{"score": req.Score, "reason": req.Reason},
 	})
 
 	return *rating, nil

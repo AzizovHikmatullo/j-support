@@ -160,8 +160,8 @@ func (r *repository) ChangeStatus(ctx context.Context, status string, ticketID u
 
 func (r *repository) CreateRating(ctx context.Context, rating *Rating) error {
 	query := `
-        INSERT INTO ticket_ratings(ticket_id, contact_id, score)
-        VALUES ($1, $2, $3)
+        INSERT INTO ticket_ratings(ticket_id, contact_id, score, reason)
+        VALUES ($1, $2, $3, $4)
         RETURNING id
     `
 
@@ -169,6 +169,7 @@ func (r *repository) CreateRating(ctx context.Context, rating *Rating) error {
 		rating.TicketID,
 		rating.ContactID,
 		rating.Score,
+		rating.Reason,
 	).Scan(&rating.ID)
 	if err != nil {
 		return err
@@ -180,7 +181,7 @@ func (r *repository) GetRating(ctx context.Context, ticketID uuid.UUID) (Rating,
 	var rating Rating
 
 	query := `
-        SELECT id, ticket_id, contact_id, score
+        SELECT id, ticket_id, contact_id, score, reason
         FROM ticket_ratings
         WHERE ticket_id = $1
     `
