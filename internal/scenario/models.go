@@ -25,10 +25,11 @@ type Step struct {
 }
 
 type Session struct {
-	TicketID      uuid.UUID `json:"ticket_id" db:"ticket_id"`
-	ScenarioID    int       `json:"scenario_id" db:"scenario_id"`
-	CurrentStepID int       `json:"current_step_id" db:"current_step_id"`
-	CreatedAt     time.Time `json:"created_at" db:"created_at"`
+	TicketID       uuid.UUID `json:"ticket_id" db:"ticket_id"`
+	ScenarioID     int       `json:"scenario_id" db:"scenario_id"`
+	CurrentStepID  int       `json:"current_step_id" db:"current_step_id"`
+	CreatedAt      time.Time `json:"created_at" db:"created_at"`
+	LastActivityAt time.Time `json:"last_activity_at" db:"last_activity_at"`
 }
 
 type StepNode struct {
@@ -64,6 +65,7 @@ var (
 	ErrCreateSession        = errors.New("failed to create session")
 	ErrGetSession           = errors.New("failed to get session by ticket id")
 	ErrUpdateSession        = errors.New("failed to update session")
+	ErrUpdateActivity       = errors.New("failed to update session activity")
 	ErrUpdateStep           = errors.New("failed to update step")
 	ErrCreateScenario       = errors.New("failed to create scenario")
 	ErrCreateStep           = errors.New("failed to create step")

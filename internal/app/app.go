@@ -15,6 +15,7 @@ import (
 	"github.com/AzizovHikmatullo/j-support/internal/contacts"
 	"github.com/AzizovHikmatullo/j-support/internal/middleware"
 	"github.com/AzizovHikmatullo/j-support/internal/scenario"
+	"github.com/AzizovHikmatullo/j-support/internal/scheduler"
 	"github.com/AzizovHikmatullo/j-support/internal/tickets"
 	"github.com/AzizovHikmatullo/j-support/internal/ws"
 	"github.com/gin-contrib/cors"
@@ -202,6 +203,14 @@ func (a *App) InitRoutes() {
 		initRoutes.POST("/web", initHandler.InitWeb)
 		initRoutes.POST("/telegram", initHandler.InitTelegram)
 	}
+
+	// ---------
+	// SCHEDULER
+	// ----------
+
+	sched := scheduler.New(ticketsService, scenarioRepository, a.logger)
+
+	sched.Start()
 
 	a.logger.Info("All routes created")
 }

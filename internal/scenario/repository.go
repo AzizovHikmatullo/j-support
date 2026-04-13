@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -297,6 +298,24 @@ func (r *postgresRepo) GetSession(ctx context.Context, ticketID uuid.UUID) (Sess
 	return session, nil
 }
 
+func (r *postgresRepo) GetInactiveSessions(ctx context.Context, cutoff time.Time) ([]Session, error) {
+	query := `
+        SELECT bs.ticket_id, bs.scenario_id, bs.current_step_id, bs.created_at, bs.last_activity_at
+		FROM bot_sessions bs
+		JOIN tickets t ON t.id = bs.ticket_id
+		WHERE t.status = 'pending' AND bs.last_activity_at < $1;
+    `
+
+	var sessions []Session
+
+	err := r.db.SelectContext(ctx, &sessions, query, cutoff)
+	if err != nil {
+		return nil, err
+	}
+
+	return sessions, nil
+}
+
 func (r *postgresRepo) UpdateSession(ctx context.Context, ticketID uuid.UUID, nextStepID int) error {
 	query := `
         UPDATE bot_sessions
@@ -307,6 +326,21 @@ func (r *postgresRepo) UpdateSession(ctx context.Context, ticketID uuid.UUID, ne
 	_, err := r.db.ExecContext(ctx, query, ticketID, nextStepID)
 	if err != nil {
 		return ErrUpdateSession
+	}
+
+	return nil
+}
+
+func (r *postgresRepo) UpdateLastActivity(ctx context.Context, ticketID uuid.UUID) error {
+	query := `
+        UPDATE bot_sessions
+        SET last_activity_at = now()
+        WHERE ticket_id = $1
+    `
+
+	_, err := r.db.ExecContext(ctx, query, ticketID)
+	if err != nil {
+		return ErrUpdateActivity
 	}
 
 	return nil

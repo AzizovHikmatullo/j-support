@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/AzizovHikmatullo/j-support/internal/tickets"
 	"github.com/google/uuid"
@@ -27,7 +28,9 @@ type Repository interface {
 
 	CreateSession(ctx context.Context, ticketID uuid.UUID, scenarioID, stepID int) error
 	GetSession(ctx context.Context, ticketID uuid.UUID) (Session, error)
+	GetInactiveSessions(ctx context.Context, cutoff time.Time) ([]Session, error)
 	UpdateSession(ctx context.Context, ticketID uuid.UUID, nextStepID int) error
+	UpdateLastActivity(ctx context.Context, ticketID uuid.UUID) error
 }
 
 type service struct {
@@ -246,6 +249,10 @@ func (s *service) StartIfExists(ctx context.Context, ticketID uuid.UUID, categor
 func (s *service) HandleMessage(ctx context.Context, ticketID uuid.UUID, answer string) (*string, error) {
 	session, err := s.repo.GetSession(ctx, ticketID)
 	if err != nil {
+		return nil, err
+	}
+
+	if err = s.repo.UpdateLastActivity(ctx, ticketID); err != nil {
 		return nil, err
 	}
 

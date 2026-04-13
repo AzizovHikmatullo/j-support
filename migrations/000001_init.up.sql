@@ -64,7 +64,8 @@ create table bot_sessions (
     ticket_id uuid primary key references tickets(id) on delete cascade,
     scenario_id int not null references bot_scenarios(id),
     current_step_id int not null references bot_steps(id),
-    created_at timestamp not null default now()
+    created_at timestamp not null default now(),
+    last_activity_at timestamp not null default now()
 );
 
 CREATE TABLE activity_log (
