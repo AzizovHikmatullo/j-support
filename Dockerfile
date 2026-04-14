@@ -22,6 +22,6 @@ COPY --from=builder /build/migrations /build/migrations
 
 COPY .env ./
 
-EXPOSE 8080
+EXPOSE 7777
 
 ENTRYPOINT ["/build/j-support"]
