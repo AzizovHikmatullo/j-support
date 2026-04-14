@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	ticketTimeout = 10 * time.Second
+	ticketTimeout = 5 * time.Minute
 
 	inactivityCloseMessage = "Время ожидания ответа истекло. Ваше обращение будет закрыто!"
 )
