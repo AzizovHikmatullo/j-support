@@ -182,6 +182,9 @@ func (s *service) ChangeAssigned(ctx context.Context, userID int, role string, t
 	}
 
 	newTicket, err := s.repo.ChangeAssigned(ctx, ticket.ID, assignedTo)
+	if err != nil {
+		return Ticket{}, err
+	}
 
 	s.activityLog.Log(ctx, activity_log.LogEntry{
 		TicketID:  ticketID,
