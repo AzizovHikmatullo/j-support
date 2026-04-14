@@ -2,8 +2,6 @@ package activity_log
 
 import (
 	"context"
-	"fmt"
-
 	"github.com/google/uuid"
 )
 
@@ -24,10 +22,7 @@ func NewService(repo Repository) Service {
 }
 
 func (s *service) Log(ctx context.Context, entry LogEntry) {
-	err := s.repo.Create(ctx, entry)
-	if err != nil {
-		fmt.Println(err)
-	}
+	_ = s.repo.Create(ctx, entry)
 }
 
 func (s *service) GetAll(ctx context.Context) ([]ActivityLog, error) {
