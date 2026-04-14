@@ -40,7 +40,7 @@ create table messages (
     ticket_id uuid not null references tickets(id),
     sender_id int not null,
     sender_type text not null,
-    content text not null,
+    content varchar(150) not null,
     created_at timestamp not null default now()
 );
 

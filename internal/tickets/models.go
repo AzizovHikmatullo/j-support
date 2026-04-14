@@ -59,7 +59,7 @@ type ChangeStatusRequest struct {
 }
 
 type CreateMessageRequest struct {
-	Content string `json:"content" binding:"required"`
+	Content string `json:"content" binding:"required,min=1,max=150"`
 }
 
 type CreateRatingRequest struct {
