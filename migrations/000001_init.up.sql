@@ -77,3 +77,30 @@ CREATE TABLE activity_log (
     payload jsonb,
     created_at timestamp not null default now()
 );
+
+create index idx_activity_log_created_at on activity_log(created_at desc);
+create index idx_activity_log_ticket_created on activity_log(ticket_id, created_at desc);
+
+create index idx_categories_destination_enabled on categories(destination, enabled);
+
+create index idx_bot_scenarios_category_active on bot_scenarios(category_id, is_active);
+
+create index idx_bot_steps_scenario_id on bot_steps(scenario_id);
+create index idx_bot_steps_parent_id on bot_steps(parent_id);
+create index idx_bot_steps_scenario_parent_null on bot_steps(scenario_id) where parent_id is null;
+
+create index idx_bot_sessions_ticket_id on bot_sessions(ticket_id);
+create index idx_bot_sessions_last_activity on bot_sessions(last_activity_at);
+create index idx_bot_sessions_scenario_id on bot_sessions(scenario_id);
+create index idx_bot_sessions_current_step_id on bot_sessions(current_step_id);
+
+create index idx_tickets_contact_created on tickets(contact_id, created_at desc);
+create index idx_tickets_status_created on tickets(status, created_at desc);
+create index idx_tickets_assigned_created on tickets(assigned_id, created_at desc);
+create index idx_tickets_created_at on tickets(created_at desc);
+create index idx_tickets_category_id on tickets(category_id);
+create index idx_tickets_contact_id on tickets(contact_id);
+create index idx_tickets_assigned_id on tickets(assigned_id);
+create index idx_ticket_ratings_contact_id on ticket_ratings(contact_id);
+
+create index idx_messages_ticket_created on messages(ticket_id, created_at);

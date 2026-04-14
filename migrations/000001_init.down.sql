@@ -1,3 +1,24 @@
+drop index if exists idx_activity_log_created_at;
+drop index if exists idx_activity_log_ticket_created;
+drop index if exists idx_categories_destination_enabled;
+drop index if exists idx_bot_scenarios_category_active;
+drop index if exists idx_bot_steps_scenario_id;
+drop index if exists idx_bot_steps_parent_id;
+drop index if exists idx_bot_steps_scenario_parent_null;
+drop index if exists idx_bot_sessions_ticket_id;
+drop index if exists idx_bot_sessions_last_activity;
+drop index if exists idx_bot_sessions_scenario_id;
+drop index if exists idx_bot_sessions_current_step_id;
+drop index if exists idx_tickets_contact_created;
+drop index if exists idx_tickets_status_created;
+drop index if exists idx_tickets_assigned_created;
+drop index if exists idx_tickets_created_at;
+drop index if exists idx_tickets_category_id;
+drop index if exists idx_tickets_contact_id;
+drop index if exists idx_tickets_assigned_id;
+drop index if exists idx_ticket_ratings_contact_id;
+drop index if exists idx_messages_ticket_created;
+
 drop table if exists activity_log;
 drop table if exists bot_sessions;
 drop table if exists bot_steps;
