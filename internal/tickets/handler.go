@@ -3,6 +3,7 @@ package tickets
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/AzizovHikmatullo/j-support/internal/channel"
 	"github.com/AzizovHikmatullo/j-support/internal/contacts"
@@ -21,7 +22,7 @@ type Service interface {
 	RateTicket(ctx context.Context, contactID int, ticketID uuid.UUID, req CreateRatingRequest) (Rating, error)
 	CreateMessage(ctx context.Context, ticketID uuid.UUID, senderID int, senderType, content string) (*Message, error)
 	CreateMessageWithButtons(ctx context.Context, ticketID uuid.UUID, senderID int, senderType, content string, buttons []string) (*Message, error)
-	GetMessages(ctx context.Context, userID int, role string, ticketID uuid.UUID) ([]Message, error)
+	GetMessages(ctx context.Context, userID int, role string, ticketID uuid.UUID, limit int, cursor string) ([]Message, string, error)
 	SetScenarioService(botService scenarioService)
 }
 
@@ -176,13 +177,21 @@ func (h *handler) GetMessagesForUser(c *gin.Context) {
 		return
 	}
 
-	messages, err := h.service.GetMessages(c.Request.Context(), contact.ID, userRole, ticketID)
+	limitStr := c.DefaultQuery("limit", "20")
+	cursor := c.Query("cursor")
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 || limit > 100 {
+		limit = 20
+	}
+
+	messages, nextCursor, err := h.service.GetMessages(c.Request.Context(), contact.ID, userRole, ticketID, limit, cursor)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, messages)
+	c.JSON(http.StatusOK, gin.H{"messages": messages, "nextCursor": nextCursor})
 }
 
 func (h *handler) resolveContact(c *gin.Context) (*contacts.Contact, error) {
@@ -321,11 +330,19 @@ func (h *handler) GetMessagesForSupport(c *gin.Context) {
 		return
 	}
 
-	messages, err := h.service.GetMessages(c.Request.Context(), userID, role, ticketID)
+	limitStr := c.DefaultQuery("limit", "20")
+	cursor := c.Query("cursor")
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 || limit > 100 {
+		limit = 20
+	}
+
+	messages, nextCursor, err := h.service.GetMessages(c.Request.Context(), userID, role, ticketID, limit, cursor)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, messages)
+	c.JSON(http.StatusOK, gin.H{"messages": messages, "nextCursor": nextCursor})
 }

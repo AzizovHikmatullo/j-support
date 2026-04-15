@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -223,17 +224,29 @@ func (r *repository) CreateMessage(ctx context.Context, tx *sqlx.Tx, message *Me
 	return nil
 }
 
-func (r *repository) GetMessages(ctx context.Context, ticketID uuid.UUID) ([]Message, error) {
+func (r *repository) GetMessages(ctx context.Context, ticketID uuid.UUID, limit int, cursor *uuid.UUID) ([]Message, error) {
 	messages := make([]Message, 0)
 
 	query := `
-		SELECT * 
-		FROM messages 
-		WHERE ticket_id = $1 
-		ORDER BY created_at
-	`
+        SELECT *
+        FROM messages
+        WHERE ticket_id = $1
+    `
 
-	err := r.db.SelectContext(ctx, &messages, query, ticketID)
+	args := []any{ticketID}
+
+	if cursor != nil {
+		query += ` AND id < $2 `
+		args = append(args, *cursor)
+	}
+
+	query += `
+        ORDER BY created_at DESC
+        LIMIT $` + strconv.Itoa(len(args)+1)
+
+	args = append(args, limit)
+
+	err := r.db.SelectContext(ctx, &messages, query, args...)
 	if err != nil {
 		return messages, err
 	}

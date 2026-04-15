@@ -3,6 +3,7 @@ package tickets
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/AzizovHikmatullo/j-support/internal/activity_log"
 	"github.com/AzizovHikmatullo/j-support/internal/categories"
 	"github.com/AzizovHikmatullo/j-support/internal/ws"
@@ -23,7 +24,7 @@ type Repository interface {
 	GetRating(ctx context.Context, ticketID uuid.UUID) (Rating, error)
 
 	CreateMessage(ctx context.Context, tx *sqlx.Tx, message *Message) error
-	GetMessages(ctx context.Context, ticketID uuid.UUID) ([]Message, error)
+	GetMessages(ctx context.Context, ticketID uuid.UUID, limit int, cursor *uuid.UUID) ([]Message, error)
 	BeginTxx(ctx context.Context) (*sqlx.Tx, error)
 }
 
@@ -368,22 +369,42 @@ func (s *service) CreateMessageWithButtons(ctx context.Context, ticketID uuid.UU
 	return message, nil
 }
 
-func (s *service) GetMessages(ctx context.Context, userID int, role string, ticketID uuid.UUID) ([]Message, error) {
+func (s *service) GetMessages(ctx context.Context, userID int, role string, ticketID uuid.UUID, limit int, cursor string) ([]Message, string, error) {
 	ticket, err := s.repo.GetByID(ctx, ticketID)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if role == "user" && ticket.ContactID != userID {
-		return nil, ErrForbidden
+		return nil, "", ErrForbidden
 	}
 
-	messages, err := s.repo.GetMessages(ctx, ticketID)
+	var cursorID *uuid.UUID
+	if cursor != "" {
+		id, err := uuid.Parse(cursor)
+		if err != nil {
+			return nil, "", err
+		}
+		cursorID = &id
+	}
+
+	messages, err := s.repo.GetMessages(ctx, ticketID, limit+1, cursorID)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return messages, nil
+	var nextCursor string
+
+	if len(messages) > limit {
+		nextCursor = messages[limit-1].ID.String()
+		messages = messages[:limit]
+	}
+
+	fmt.Println("len(messages) > limit:", len(messages) > limit)
+	fmt.Println("len(messages)", len(messages))
+	fmt.Println("limit", limit)
+
+	return messages, nextCursor, nil
 }
 
 func (s *service) saveMessage(ctx context.Context, tx *sqlx.Tx, ticket *Ticket, senderID int, senderType string, content string) (*Message, error) {

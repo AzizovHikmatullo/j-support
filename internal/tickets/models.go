@@ -16,7 +16,6 @@ type Ticket struct {
 	Source     string    `json:"source" db:"source"`
 	CreatedAt  time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at" db:"updated_at"`
-	Messages   []Message `json:"messages" db:"-"`
 }
 
 type Message struct {
