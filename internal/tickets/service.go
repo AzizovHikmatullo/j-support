@@ -137,13 +137,6 @@ func (s *service) GetByID(ctx context.Context, userID int, role string, ticketID
 		return Ticket{}, err
 	}
 
-	messages, err := s.repo.GetMessages(ctx, ticketID)
-	if err != nil {
-		return Ticket{}, err
-	}
-
-	ticket.Messages = messages
-
 	return ticket, nil
 }
 
@@ -156,13 +149,6 @@ func (s *service) GetMine(ctx context.Context, contactID int, ticketID uuid.UUID
 	if ticket.ContactID != contactID {
 		return Ticket{}, ErrForbidden
 	}
-
-	messages, err := s.repo.GetMessages(ctx, ticketID)
-	if err != nil {
-		return Ticket{}, err
-	}
-
-	ticket.Messages = messages
 
 	return ticket, nil
 }
