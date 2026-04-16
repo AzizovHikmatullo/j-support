@@ -27,7 +27,10 @@ func (r *repository) Create(ctx context.Context, entry LogEntry) error {
 		entry.Action,
 		entry.Payload,
 	)
-	return err
+	if err != nil {
+		return ErrCreate
+	}
+	return nil
 }
 
 func (r *repository) GetAll(ctx context.Context) ([]ActivityLog, error) {
@@ -38,7 +41,10 @@ func (r *repository) GetAll(ctx context.Context) ([]ActivityLog, error) {
 		ORDER BY created_at DESC
 	`
 	err := r.db.SelectContext(ctx, &logs, query)
-	return logs, err
+	if err != nil {
+		return nil, ErrGetAll
+	}
+	return logs, nil
 }
 
 func (r *repository) GetByTicket(ctx context.Context, ticketID uuid.UUID) ([]ActivityLog, error) {
@@ -50,5 +56,8 @@ func (r *repository) GetByTicket(ctx context.Context, ticketID uuid.UUID) ([]Act
 		ORDER BY created_at DESC
 	`
 	err := r.db.SelectContext(ctx, &logs, query, ticketID)
-	return logs, err
+	if err != nil {
+		return nil, ErrGetByTicket
+	}
+	return logs, nil
 }

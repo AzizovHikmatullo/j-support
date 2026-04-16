@@ -56,6 +56,12 @@ const (
 	ActorUser = "user"
 )
 
+var (
+	ErrGetByTicket = errors.New("failed to get activity log for this ticket")
+	ErrGetAll      = errors.New("failed to get full activity log")
+	ErrCreate      = errors.New("failed to create log entry")
+)
+
 type LogEntry struct {
 	TicketID  uuid.UUID
 	ActorID   int
