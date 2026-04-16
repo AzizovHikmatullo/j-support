@@ -19,6 +19,7 @@ drop index if exists idx_tickets_assigned_id;
 drop index if exists idx_ticket_ratings_contact_id;
 drop index if exists idx_messages_ticket_created;
 
+drop table if exists idempotency_keys;
 drop table if exists activity_log;
 drop table if exists bot_sessions;
 drop table if exists bot_steps;

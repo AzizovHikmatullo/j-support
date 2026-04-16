@@ -152,6 +152,7 @@ func (a *App) InitRoutes() {
 	}
 
 	ticketsService.SetScenarioService(scenarioService)
+	idem := middleware.IdempotencyMiddleware(a.db)
 
 	// ---------
 	// CLIENT ROUTES
@@ -160,11 +161,12 @@ func (a *App) InitRoutes() {
 	clientRoutes := a.router.Group("/tickets")
 	clientRoutes.Use(middleware.ChannelIdentityMiddleware(a.cfg.JWT.Secret))
 	{
-		clientRoutes.POST("", middleware.RequireRole("user"), ticketsHandler.Create)
+
+		clientRoutes.POST("", middleware.RequireRole("user"), idem, ticketsHandler.Create)
 		clientRoutes.GET("", middleware.RequireRole("user"), ticketsHandler.GetMine)
 		clientRoutes.GET(":id", middleware.RequireRole("user"), ticketsHandler.GetMineByID)
 		clientRoutes.POST(":id/rate", middleware.RequireRole("user"), ticketsHandler.Rate)
-		clientRoutes.POST(":id/messages", middleware.RequireRole("user"), ticketsHandler.CreateMessageByUser)
+		clientRoutes.POST(":id/messages", middleware.RequireRole("user"), idem, ticketsHandler.CreateMessageByUser)
 		clientRoutes.GET(":id/messages", middleware.RequireRole("user"), ticketsHandler.GetMessagesForUser)
 	}
 
@@ -179,7 +181,7 @@ func (a *App) InitRoutes() {
 		supportRoutes.GET(":id", middleware.RequireRole("support", "admin"), ticketsHandler.GetByID)
 		supportRoutes.PATCH(":id/assign", middleware.RequireRole("support", "admin"), ticketsHandler.ChangeAssigned)
 		supportRoutes.PATCH(":id/status", middleware.RequireRole("support", "admin"), ticketsHandler.ChangeStatus)
-		supportRoutes.POST(":id/messages", middleware.RequireRole("support", "admin"), ticketsHandler.CreateMessageBySupport)
+		supportRoutes.POST(":id/messages", middleware.RequireRole("support", "admin"), idem, ticketsHandler.CreateMessageBySupport)
 		supportRoutes.GET(":id/messages", middleware.RequireRole("support", "admin"), ticketsHandler.GetMessagesForSupport)
 	}
 

@@ -78,6 +78,13 @@ CREATE TABLE activity_log (
     created_at timestamp not null default now()
 );
 
+CREATE TABLE idempotency_keys (
+    key         text primary key,
+    response    jsonb not null,
+    status_code int not null,
+    created_at  timestamp not null default now()
+);
+
 create index idx_activity_log_created_at on activity_log(created_at desc);
 create index idx_activity_log_ticket_created on activity_log(ticket_id, created_at desc);
 
