@@ -67,20 +67,18 @@ type CreateRatingRequest struct {
 }
 
 var (
-	ErrUndefined          = errors.New("something went wrong")
-	ErrCategoryDisabled   = errors.New("category disabled")
 	ErrForbidden          = errors.New("forbidden")
-	ErrInvalidStatus      = errors.New("invalid status")
-	ErrCannotAssign       = errors.New("you can not assign this ticket")
-	ErrTicketNotFound     = errors.New("ticket not found")
-	ErrClosedTicket       = errors.New("cannot write to closed ticket")
-	ErrSupportCannotWrite = errors.New("you cannot write to this ticket")
-	ErrPublishFailed      = errors.New("failed to publish message")
 	ErrUnauthorized       = errors.New("unauthorized")
+	ErrRatingNotFound     = errors.New("rating not found")
+	ErrTicketNotFound     = errors.New("ticket not found")
 	ErrUnknownChannel     = errors.New("unknown request channel")
-	ErrNotFound           = errors.New("not found")
-	ErrAlreadyRated       = errors.New("ticket already rated")
+	ErrInvalidStatus      = errors.New("invalid status")
+	ErrClosedTicket       = errors.New("cannot write to closed ticket")
 	ErrNotClosed          = errors.New("ticket is not closed yet")
+	ErrCategoryDisabled   = errors.New("category disabled")
+	ErrCannotAssign       = errors.New("you can not assign this ticket")
+	ErrSupportCannotWrite = errors.New("you cannot write to this ticket")
+	ErrAlreadyRated       = errors.New("ticket already rated")
 	ErrInvalidScore       = errors.New("score must be between 1 and 5")
 )
 

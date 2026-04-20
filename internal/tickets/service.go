@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/AzizovHikmatullo/j-support/internal/activity_log"
 	"github.com/AzizovHikmatullo/j-support/internal/categories"
 	"github.com/AzizovHikmatullo/j-support/internal/ws"
@@ -59,7 +60,7 @@ func (s *service) SetScenarioService(botService scenarioService) {
 func (s *service) Create(ctx context.Context, contactID int, role string, source string, req CreateTicketRequest) (*CreateTicketResponse, error) {
 	tx, err := s.repo.BeginTxx(ctx)
 	if err != nil {
-		return nil, ErrUndefined
+		return nil, fmt.Errorf("create ticket: begin tx: %w", err)
 	}
 
 	defer func() {
@@ -70,7 +71,7 @@ func (s *service) Create(ctx context.Context, contactID int, role string, source
 
 	category, err := s.categoryRepo.GetByID(ctx, req.CategoryID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create ticket: get category by id: %w", err)
 	}
 
 	if !category.Enabled {
@@ -81,11 +82,11 @@ func (s *service) Create(ctx context.Context, contactID int, role string, source
 
 	err = s.repo.Create(ctx, tx, ticket)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create ticket: %w", err)
 	}
 
 	if err = tx.Commit(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create ticket: tx commit: %w", err)
 	}
 
 	s.activityLog.Log(ctx, activity_log.LogEntry{
@@ -103,7 +104,7 @@ func (s *service) Create(ctx context.Context, contactID int, role string, source
 
 	updatedTicket, err := s.repo.GetByID(ctx, ticket.ID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create ticket: get updated ticket: %w", err)
 	}
 
 	return &CreateTicketResponse{
@@ -118,11 +119,26 @@ func (s *service) Create(ctx context.Context, contactID int, role string, source
 func (s *service) Get(ctx context.Context, role string, userID int) ([]Ticket, error) {
 	switch role {
 	case "user":
-		return s.repo.GetByContact(ctx, userID)
+		tickets, err := s.repo.GetByContact(ctx, userID)
+		if err != nil {
+			return tickets, fmt.Errorf("get tickets for user: %w", err)
+		}
+		return tickets, nil
+
 	case "support":
-		return s.repo.GetSupportTickets(ctx, userID)
+		tickets, err := s.repo.GetSupportTickets(ctx, userID)
+		if err != nil {
+			return tickets, fmt.Errorf("get tickets for support: %w", err)
+		}
+		return tickets, nil
+
 	case "admin":
-		return s.repo.GetAll(ctx)
+		tickets, err := s.repo.GetAll(ctx)
+		if err != nil {
+			return tickets, fmt.Errorf("get all tickets for admin: %w", err)
+		}
+		return tickets, nil
+
 	default:
 		return nil, ErrForbidden
 	}
@@ -131,7 +147,7 @@ func (s *service) Get(ctx context.Context, role string, userID int) ([]Ticket, e
 func (s *service) GetByID(ctx context.Context, userID int, role string, ticketID uuid.UUID) (Ticket, error) {
 	ticket, err := s.repo.GetByID(ctx, ticketID)
 	if err != nil {
-		return Ticket{}, err
+		return Ticket{}, fmt.Errorf("get ticket by id: %w", err)
 	}
 
 	if err := checkAccess(userID, role, ticket); err != nil {
@@ -144,7 +160,7 @@ func (s *service) GetByID(ctx context.Context, userID int, role string, ticketID
 func (s *service) GetMine(ctx context.Context, contactID int, ticketID uuid.UUID) (Ticket, error) {
 	ticket, err := s.repo.GetByID(ctx, ticketID)
 	if err != nil {
-		return Ticket{}, err
+		return Ticket{}, fmt.Errorf("get mine ticket by id: %w", err)
 	}
 
 	if ticket.ContactID != contactID {
@@ -161,7 +177,7 @@ func (s *service) ChangeAssigned(ctx context.Context, userID int, role string, t
 
 	ticket, err := s.repo.GetByID(ctx, ticketID)
 	if err != nil {
-		return Ticket{}, err
+		return Ticket{}, fmt.Errorf("get ticket by id: %w", err)
 	}
 
 	if ticket.Status == statusClosed {
@@ -170,7 +186,7 @@ func (s *service) ChangeAssigned(ctx context.Context, userID int, role string, t
 
 	newTicket, err := s.repo.ChangeAssigned(ctx, ticket.ID, assignedTo)
 	if err != nil {
-		return Ticket{}, err
+		return Ticket{}, fmt.Errorf("change assigned: %w", err)
 	}
 
 	s.activityLog.Log(ctx, activity_log.LogEntry{
@@ -185,8 +201,9 @@ func (s *service) ChangeAssigned(ctx context.Context, userID int, role string, t
 		Type:    "assigned_changed",
 		Payload: map[string]any{"ticket_id": ticketID, "assigned_to": assignedTo},
 	}
+
 	if err = s.publisher.PublishToTicket(ticketID, event); err != nil {
-		return Ticket{}, err
+		// TODO: JUST LOG ABT ERROR
 	}
 
 	return newTicket, nil
@@ -199,7 +216,7 @@ func (s *service) ChangeStatus(ctx context.Context, userID int, role string, tic
 
 	ticket, err := s.repo.GetByID(ctx, ticketID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get ticket by id: %w", err)
 	}
 
 	prevStatus := ticket.Status
@@ -216,7 +233,7 @@ func (s *service) ChangeStatus(ctx context.Context, userID int, role string, tic
 
 	err = s.repo.ChangeStatus(ctx, status, ticketID)
 	if err != nil {
-		return err
+		return fmt.Errorf("change status: %w", err)
 	}
 
 	s.activityLog.Log(ctx, activity_log.LogEntry{
@@ -232,7 +249,7 @@ func (s *service) ChangeStatus(ctx context.Context, userID int, role string, tic
 		Payload: map[string]any{"ticket_id": ticketID, "status": status},
 	}
 	if err = s.publisher.PublishToTicket(ticketID, event); err != nil {
-		return err
+		// TODO: JUST LOG ABT ERROR
 	}
 
 	return nil
@@ -245,7 +262,7 @@ func (s *service) RateTicket(ctx context.Context, contactID int, ticketID uuid.U
 
 	ticket, err := s.repo.GetByID(ctx, ticketID)
 	if err != nil {
-		return Rating{}, err
+		return Rating{}, fmt.Errorf("get ticket by id: %w", err)
 	}
 
 	if ticket.Status != statusClosed {
@@ -260,8 +277,8 @@ func (s *service) RateTicket(ctx context.Context, contactID int, ticketID uuid.U
 	if err == nil {
 		return Rating{}, ErrAlreadyRated
 	}
-	if !errors.Is(err, ErrNotFound) {
-		return Rating{}, err
+	if !errors.Is(err, ErrRatingNotFound) {
+		return Rating{}, fmt.Errorf("get rating: %w", err)
 	}
 
 	rating := &Rating{
@@ -271,7 +288,7 @@ func (s *service) RateTicket(ctx context.Context, contactID int, ticketID uuid.U
 		Reason:    req.Reason,
 	}
 	if err = s.repo.CreateRating(ctx, rating); err != nil {
-		return Rating{}, err
+		return Rating{}, fmt.Errorf("create rating: %w", err)
 	}
 
 	s.activityLog.Log(ctx, activity_log.LogEntry{
@@ -288,7 +305,7 @@ func (s *service) RateTicket(ctx context.Context, contactID int, ticketID uuid.U
 func (s *service) CreateMessage(ctx context.Context, ticketID uuid.UUID, senderID int, senderType, content string) (*Message, error) {
 	tx, err := s.repo.BeginTxx(ctx)
 	if err != nil {
-		return nil, ErrUndefined
+		return nil, fmt.Errorf("create messages: begin tx: %w", err)
 	}
 
 	defer func() {
@@ -299,27 +316,27 @@ func (s *service) CreateMessage(ctx context.Context, ticketID uuid.UUID, senderI
 
 	ticket, err := s.repo.GetByID(ctx, ticketID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get by id: %w", err)
 	}
 
 	message, err := s.saveMessage(ctx, tx, &ticket, senderID, senderType, content)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("save message: %w", err)
 	}
 
-	publishError := s.publishMessage(ticket.ID, message, nil)
-	if publishError != nil {
-		return nil, publishError
+	err = s.publishMessage(ticket.ID, message, nil)
+	if err != nil {
+		// TODO: JUST LOG ABT ERROR
 	}
 
 	if ticket.Status == statusPending && senderType == "user" {
 		if err = s.processScenario(ctx, ticket, message); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("process scenario: %w", err)
 		}
 	}
 
 	if err = tx.Commit(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create message: tx commit: %w", err)
 	}
 
 	s.logMessage(ctx, ticketID, senderID, senderType, message.Content)
@@ -330,7 +347,7 @@ func (s *service) CreateMessage(ctx context.Context, ticketID uuid.UUID, senderI
 func (s *service) CreateMessageWithButtons(ctx context.Context, ticketID uuid.UUID, senderID int, senderType, content string, buttons []string) (*Message, error) {
 	tx, err := s.repo.BeginTxx(ctx)
 	if err != nil {
-		return nil, ErrUndefined
+		return nil, fmt.Errorf("create messages: begin tx: %w", err)
 	}
 
 	defer func() {
@@ -341,27 +358,27 @@ func (s *service) CreateMessageWithButtons(ctx context.Context, ticketID uuid.UU
 
 	ticket, err := s.repo.GetByID(ctx, ticketID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get by id: %w", err)
 	}
 
 	message, err := s.saveMessage(ctx, tx, &ticket, senderID, senderType, content)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("save message: %w", err)
 	}
 
-	publishError := s.publishMessage(ticket.ID, message, buttons)
-	if publishError != nil {
-		return nil, publishError
+	err = s.publishMessage(ticket.ID, message, buttons)
+	if err != nil {
+		// TODO: JUST LOG ABT ERROR
 	}
 
 	if ticket.Status == statusPending && senderType == "user" {
 		if err = s.processScenario(ctx, ticket, message); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("process scenario: %w", err)
 		}
 	}
 
 	if err = tx.Commit(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create message: tx commit: %w", err)
 	}
 
 	s.logMessage(ctx, ticketID, senderID, senderType, message.Content)
@@ -442,7 +459,7 @@ func (s *service) publishMessage(ticketID uuid.UUID, message *Message, buttons [
 	}
 
 	if err := s.publisher.PublishToTicket(ticketID, event); err != nil {
-		return ErrPublishFailed
+		return err
 	}
 	return nil
 }
@@ -450,7 +467,7 @@ func (s *service) publishMessage(ticketID uuid.UUID, message *Message, buttons [
 func (s *service) processScenario(ctx context.Context, ticket Ticket, message *Message) error {
 	nextQuestion, err := s.scenarioService.HandleMessage(ctx, ticket.ID, message.Content)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	if nextQuestion != nil {

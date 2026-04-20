@@ -2,6 +2,7 @@ package tickets
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -62,7 +63,7 @@ func (h *handler) Create(c *gin.Context) {
 
 	ticket, err := h.service.Create(c.Request.Context(), contact.ID, userRole, identity.ChannelType, req)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -78,7 +79,7 @@ func (h *handler) GetMine(c *gin.Context) {
 
 	tickets, err := h.service.Get(c.Request.Context(), userRole, contact.ID)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -100,7 +101,7 @@ func (h *handler) GetMineByID(c *gin.Context) {
 
 	ticket, err := h.service.GetMine(c.Request.Context(), contact.ID, ticketID)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -128,7 +129,7 @@ func (h *handler) Rate(c *gin.Context) {
 
 	rating, err := h.service.RateTicket(c.Request.Context(), contact.ID, ticketID, req)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -157,7 +158,7 @@ func (h *handler) CreateMessageByUser(c *gin.Context) {
 
 	message, err := h.service.CreateMessage(c.Request.Context(), ticketID, contact.ID, userRole, req.Content)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -187,7 +188,7 @@ func (h *handler) GetMessagesForUser(c *gin.Context) {
 
 	messages, nextCursor, err := h.service.GetMessages(c.Request.Context(), contact.ID, userRole, ticketID, limit, cursor)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -216,7 +217,7 @@ func (h *handler) Get(c *gin.Context) {
 
 	tickets, err := h.service.Get(c.Request.Context(), role, userID)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -235,7 +236,7 @@ func (h *handler) GetByID(c *gin.Context) {
 
 	ticket, err := h.service.GetByID(c.Request.Context(), userID, role, ticketID)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -261,7 +262,7 @@ func (h *handler) ChangeAssigned(c *gin.Context) {
 
 	ticket, err := h.service.ChangeAssigned(c.Request.Context(), userID, role, ticketID, req.AssignedTo)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -287,7 +288,7 @@ func (h *handler) ChangeStatus(c *gin.Context) {
 
 	err = h.service.ChangeStatus(c.Request.Context(), userID, role, ticketID, req.Status)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -313,7 +314,7 @@ func (h *handler) CreateMessageBySupport(c *gin.Context) {
 
 	message, err := h.service.CreateMessage(c.Request.Context(), ticketID, userID, role, req.Content)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -340,9 +341,42 @@ func (h *handler) GetMessagesForSupport(c *gin.Context) {
 
 	messages, nextCursor, err := h.service.GetMessages(c.Request.Context(), userID, role, ticketID, limit, cursor)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"messages": messages, "nextCursor": nextCursor})
+}
+
+func handleError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, ErrForbidden):
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": ErrForbidden.Error()})
+	case errors.Is(err, ErrUnauthorized):
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": ErrUnauthorized.Error()})
+	case errors.Is(err, ErrRatingNotFound):
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": ErrRatingNotFound.Error()})
+	case errors.Is(err, ErrTicketNotFound):
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": ErrTicketNotFound.Error()})
+	case errors.Is(err, ErrUnknownChannel):
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": ErrUnknownChannel.Error()})
+	case errors.Is(err, ErrInvalidStatus):
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": ErrInvalidStatus.Error()})
+	case errors.Is(err, ErrInvalidScore):
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": ErrInvalidScore.Error()})
+	case errors.Is(err, ErrClosedTicket):
+		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{"error": ErrClosedTicket.Error()})
+	case errors.Is(err, ErrNotClosed):
+		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{"error": ErrNotClosed.Error()})
+	case errors.Is(err, ErrCategoryDisabled):
+		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{"error": ErrCategoryDisabled.Error()})
+	case errors.Is(err, ErrCannotAssign):
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": ErrCannotAssign.Error()})
+	case errors.Is(err, ErrSupportCannotWrite):
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": ErrSupportCannotWrite.Error()})
+	case errors.Is(err, ErrAlreadyRated):
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": ErrRatingNotFound.Error()})
+	default:
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+	}
 }

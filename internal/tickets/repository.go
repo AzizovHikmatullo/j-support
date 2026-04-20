@@ -34,11 +34,8 @@ func (r *repository) Create(ctx context.Context, tx *sqlx.Tx, ticket *Ticket) er
 		ticket.Status,
 		ticket.Source,
 	).Scan(&ticket.CreatedAt, &ticket.UpdatedAt)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }
 
 func (r *repository) GetByContact(ctx context.Context, creatorID int) ([]Ticket, error) {
@@ -52,11 +49,8 @@ func (r *repository) GetByContact(ctx context.Context, creatorID int) ([]Ticket,
 	`
 
 	err := r.db.SelectContext(ctx, &tickets, query, creatorID)
-	if err != nil {
-		return tickets, err
-	}
 
-	return tickets, nil
+	return tickets, err
 }
 
 func (r *repository) GetSupportTickets(ctx context.Context, assignedTo int) ([]Ticket, error) {
@@ -73,11 +67,8 @@ func (r *repository) GetSupportTickets(ctx context.Context, assignedTo int) ([]T
 		statusOpen,
 		assignedTo,
 	)
-	if err != nil {
-		return tickets, err
-	}
 
-	return tickets, nil
+	return tickets, err
 }
 
 func (r *repository) GetAll(ctx context.Context) ([]Ticket, error) {
@@ -90,11 +81,8 @@ func (r *repository) GetAll(ctx context.Context) ([]Ticket, error) {
 	`
 
 	err := r.db.SelectContext(ctx, &tickets, query)
-	if err != nil {
-		return tickets, err
-	}
 
-	return tickets, nil
+	return tickets, err
 }
 
 func (r *repository) GetByID(ctx context.Context, ticketID uuid.UUID) (Ticket, error) {
@@ -108,14 +96,11 @@ func (r *repository) GetByID(ctx context.Context, ticketID uuid.UUID) (Ticket, e
 	`
 
 	err := r.db.GetContext(ctx, &ticket, query, ticketID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return ticket, ErrTicketNotFound
-		}
-		return ticket, err
+	if errors.Is(err, sql.ErrNoRows) {
+		return ticket, ErrTicketNotFound
 	}
 
-	return ticket, nil
+	return ticket, err
 }
 
 func (r *repository) ChangeAssigned(ctx context.Context, ticketID uuid.UUID, assignedTo int) (Ticket, error) {
@@ -133,11 +118,11 @@ func (r *repository) ChangeAssigned(ctx context.Context, ticketID uuid.UUID, ass
 		assignedTo,
 		statusInProgress,
 	).StructScan(&ticket)
-	if err != nil {
-		return ticket, err
+	if errors.Is(err, sql.ErrNoRows) {
+		return ticket, ErrTicketNotFound
 	}
 
-	return ticket, nil
+	return ticket, err
 }
 
 func (r *repository) ChangeStatus(ctx context.Context, status string, ticketID uuid.UUID) error {
@@ -147,16 +132,12 @@ func (r *repository) ChangeStatus(ctx context.Context, status string, ticketID u
 		WHERE id = $1
 	`
 
-	_, err := r.db.ExecContext(ctx, query,
-		ticketID,
-		status,
-	)
-
-	if err != nil {
-		return err
+	_, err := r.db.ExecContext(ctx, query, ticketID, status)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrTicketNotFound
 	}
 
-	return nil
+	return err
 }
 
 func (r *repository) CreateRating(ctx context.Context, rating *Rating) error {
@@ -172,10 +153,8 @@ func (r *repository) CreateRating(ctx context.Context, rating *Rating) error {
 		rating.Score,
 		rating.Reason,
 	).Scan(&rating.ID)
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return err
 }
 
 func (r *repository) GetRating(ctx context.Context, ticketID uuid.UUID) (Rating, error) {
@@ -188,14 +167,11 @@ func (r *repository) GetRating(ctx context.Context, ticketID uuid.UUID) (Rating,
     `
 
 	err := r.db.GetContext(ctx, &rating, query, ticketID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return Rating{}, ErrNotFound
-		}
-		return Rating{}, err
+	if errors.Is(err, sql.ErrNoRows) {
+		return rating, ErrRatingNotFound
 	}
 
-	return rating, nil
+	return rating, err
 }
 
 func (r *repository) CreateMessage(ctx context.Context, tx *sqlx.Tx, message *Message) error {
@@ -214,14 +190,8 @@ func (r *repository) CreateMessage(ctx context.Context, tx *sqlx.Tx, message *Me
 		message.SenderType,
 		message.Content,
 	).StructScan(message)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrClosedTicket
-		}
-		return err
-	}
 
-	return nil
+	return err
 }
 
 func (r *repository) GetMessages(ctx context.Context, ticketID uuid.UUID, limit int, cursor *uuid.UUID) ([]Message, error) {
@@ -247,11 +217,8 @@ func (r *repository) GetMessages(ctx context.Context, ticketID uuid.UUID, limit 
 	args = append(args, limit)
 
 	err := r.db.SelectContext(ctx, &messages, query, args...)
-	if err != nil {
-		return messages, err
-	}
 
-	return messages, nil
+	return messages, err
 }
 
 func (r *repository) BeginTxx(ctx context.Context) (*sqlx.Tx, error) {
