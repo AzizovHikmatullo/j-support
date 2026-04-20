@@ -21,6 +21,8 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type App struct {
@@ -212,6 +214,12 @@ func (a *App) InitRoutes() {
 	sched := scheduler.New(ticketsService, scenarioRepository, a.logger)
 
 	sched.Start()
+
+	// ---------
+	// SWAGGER UI
+	// ----------
+
+	a.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	a.logger.Info("All routes created")
 }

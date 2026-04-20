@@ -41,6 +41,16 @@ func NewHandler(service Service, logger *slog.Logger) *handler {
 	}
 }
 
+// @Summary      Создать сценарий бота
+// @Tags         scenarios
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        body  body  scenario.CreateScenarioRequest  true  "Сценарий"
+// @Success      201   {object}  scenario.Scenario
+// @Failure      400   {object}  map[string]string
+// @Failure      500   {object}  map[string]string
+// @Router       /scenarios [post]
 func (h *handler) Create(c *gin.Context) {
 	var req CreateScenarioRequest
 
@@ -58,6 +68,17 @@ func (h *handler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, scenario)
 }
 
+// @Summary      Получить сценарий по ID
+// @Tags         scenarios
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        id   path   int   true   "ID сценария"
+// @Success      200   {object}  scenario.Scenario
+// @Failure      400   {object}  map[string]string
+// @Failure      404   {object}  map[string]string
+// @Failure      500   {object}  map[string]string
+// @Router       /scenarios/{id} [get]
 func (h *handler) GetByID(c *gin.Context) {
 	scenarioID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -74,6 +95,14 @@ func (h *handler) GetByID(c *gin.Context) {
 	c.JSON(http.StatusOK, scenario)
 }
 
+// @Summary      Получить все сценарии
+// @Tags         scenarios
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Success      200  {array}  scenario.Scenario
+// @Failure      500  {object}  map[string]string
+// @Router       /scenarios [get]
 func (h *handler) GetAll(c *gin.Context) {
 	scenarios, err := h.service.GetAll(c.Request.Context())
 	if err != nil {
@@ -84,6 +113,18 @@ func (h *handler) GetAll(c *gin.Context) {
 	c.JSON(http.StatusOK, scenarios)
 }
 
+// @Summary      Обновить сценарий
+// @Tags         scenarios
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        id    path   int                             true  "ID сценария"
+// @Param        body  body   scenario.UpdateScenarioRequest  true  "Обновление"
+// @Success      200   {object}  scenario.Scenario
+// @Failure      400   {object}  map[string]string
+// @Failure      404   {object}  map[string]string
+// @Failure      500   {object}  map[string]string
+// @Router       /scenarios/{id} [patch]
 func (h *handler) Update(c *gin.Context) {
 	scenarioID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -106,6 +147,17 @@ func (h *handler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, scenario)
 }
 
+// @Summary      Удалить сценарий
+// @Tags         scenarios
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        id   path   int   true   "ID сценария"
+// @Success      200   {object}  map[string]bool
+// @Failure      400   {object}  map[string]string
+// @Failure      404   {object}  map[string]string
+// @Failure      500   {object}  map[string]string
+// @Router       /scenarios/{id} [delete]
 func (h *handler) Delete(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -121,6 +173,17 @@ func (h *handler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
+// @Summary      Добавить шаг в сценарий
+// @Tags         scenarios
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        id    path   int                          true  "ID сценария"
+// @Param        body  body   scenario.CreateStepRequest   true  "Новый шаг"
+// @Success      201   {object}  scenario.Step
+// @Failure      400   {object}  map[string]string
+// @Failure      500   {object}  map[string]string
+// @Router       /scenarios/{id}/steps [post]
 func (h *handler) CreateStep(c *gin.Context) {
 	scenarioID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -143,6 +206,19 @@ func (h *handler) CreateStep(c *gin.Context) {
 	c.JSON(http.StatusCreated, step)
 }
 
+// @Summary      Обновить шаг сценария
+// @Tags         scenarios
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        id      path   int                          true  "ID сценария"
+// @Param        stepID  path   int                          true  "ID шага"
+// @Param        body    body   scenario.UpdateStepRequest   true  "Обновление"
+// @Success      200     {object}  scenario.Step
+// @Failure      400     {object}  map[string]string
+// @Failure      404     {object}  map[string]string
+// @Failure      500     {object}  map[string]string
+// @Router       /scenarios/{id}/steps/{stepID} [patch]
 func (h *handler) UpdateStep(c *gin.Context) {
 	scenarioID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -171,6 +247,18 @@ func (h *handler) UpdateStep(c *gin.Context) {
 	c.JSON(http.StatusOK, step)
 }
 
+// @Summary      Удалить шаг сценария
+// @Tags         scenarios
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        id      path   int   true  "ID сценария"
+// @Param        stepID  path   int   true  "ID шага"
+// @Success      200     {object}  map[string]bool
+// @Failure      400     {object}  map[string]string
+// @Failure      404     {object}  map[string]string
+// @Failure      500     {object}  map[string]string
+// @Router       /scenarios/{id}/steps/{stepID} [delete]
 func (h *handler) DeleteStep(c *gin.Context) {
 	scenarioID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {

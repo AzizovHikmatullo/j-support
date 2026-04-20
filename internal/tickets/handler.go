@@ -45,6 +45,17 @@ func NewHandler(service Service, registry *channel.Registry, logger *slog.Logger
 
 // CLIENT HANDLERS
 
+// @Summary      Создать тикет
+// @Tags         tickets
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        body  body  tickets.CreateTicketRequest  true  "Данные тикета"
+// @Success      201   {object}  tickets.CreateTicketResponse
+// @Failure      400   {object}  map[string]string
+// @Failure      401   {object}  map[string]string
+// @Failure      500   {object}  map[string]string
+// @Router       /tickets [post]
 func (h *handler) Create(c *gin.Context) {
 	var req CreateTicketRequest
 
@@ -74,6 +85,15 @@ func (h *handler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, ticket)
 }
 
+// @Summary      Получить все мои тикеты
+// @Tags         tickets
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Success      200  {array}  tickets.Ticket
+// @Failure      401  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /tickets [get]
 func (h *handler) GetMine(c *gin.Context) {
 	contact, err := h.resolveContact(c)
 	if err != nil {
@@ -90,6 +110,18 @@ func (h *handler) GetMine(c *gin.Context) {
 	c.JSON(http.StatusOK, tickets)
 }
 
+// @Summary      Получить мой тикет по ID
+// @Tags         tickets
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        id   path   string   true   "UUID тикета"
+// @Success      200   {object}  tickets.Ticket
+// @Failure      400   {object}  map[string]string
+// @Failure      401   {object}  map[string]string
+// @Failure      403   {object}  map[string]string
+// @Failure      404   {object}  map[string]string
+// @Router       /tickets/{id} [get]
 func (h *handler) GetMineByID(c *gin.Context) {
 	ticketID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -112,6 +144,19 @@ func (h *handler) GetMineByID(c *gin.Context) {
 	c.JSON(http.StatusOK, ticket)
 }
 
+// @Summary      Оценить закрытый тикет
+// @Tags         tickets
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        id    path   string                      true  "UUID тикета"
+// @Param        body  body   tickets.CreateRatingRequest true  "Оценка"
+// @Success      201   {object}  tickets.Rating
+// @Failure      400   {object}  map[string]string
+// @Failure      401   {object}  map[string]string
+// @Failure      403   {object}  map[string]string
+// @Failure      409   {object}  map[string]string "already rated"
+// @Router       /tickets/{id}/rate [post]
 func (h *handler) Rate(c *gin.Context) {
 	ticketID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -140,6 +185,18 @@ func (h *handler) Rate(c *gin.Context) {
 	c.JSON(http.StatusCreated, rating)
 }
 
+// @Summary      Отправить сообщение в тикет (от пользователя)
+// @Tags         tickets
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        id    path   string                      true  "UUID тикета"
+// @Param        body  body   tickets.CreateMessageRequest true  "Сообщение"
+// @Success      200   {object}  tickets.Message
+// @Failure      400   {object}  map[string]string
+// @Failure      401   {object}  map[string]string
+// @Failure      403   {object}  map[string]string
+// @Router       /tickets/{id}/messages [post]
 func (h *handler) CreateMessageByUser(c *gin.Context) {
 	var req CreateMessageRequest
 
@@ -169,6 +226,17 @@ func (h *handler) CreateMessageByUser(c *gin.Context) {
 	c.JSON(http.StatusOK, message)
 }
 
+// @Summary      Получить сообщения тикета (пользователь)
+// @Tags         tickets
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        id   path   string   true   "UUID тикета"
+// @Success      200   {array}  tickets.Message
+// @Failure      400   {object}  map[string]string
+// @Failure      401   {object}  map[string]string
+// @Failure      403   {object}  map[string]string
+// @Router       /tickets/{id}/messages [get]
 func (h *handler) GetMessagesForUser(c *gin.Context) {
 	ticketID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -215,6 +283,15 @@ func (h *handler) resolveContact(c *gin.Context) (*contacts.Contact, error) {
 
 // SUPPORT HANDLERS
 
+// @Summary      Получить тикеты для поддержки / админа
+// @Tags         support
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Success      200  {array}  tickets.Ticket
+// @Failure      401  {object}  map[string]string
+// @Failure      403  {object}  map[string]string
+// @Router       /support/tickets [get]
 func (h *handler) Get(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt("userID")
@@ -228,6 +305,17 @@ func (h *handler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, tickets)
 }
 
+// @Summary      Получить тикет по ID (поддержка)
+// @Tags         support
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        id   path   string   true   "UUID тикета"
+// @Success      200   {object}  tickets.Ticket
+// @Failure      400   {object}  map[string]string
+// @Failure      401   {object}  map[string]string
+// @Failure      403   {object}  map[string]string
+// @Router       /support/tickets/{id} [get]
 func (h *handler) GetByID(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt("userID")
@@ -247,6 +335,18 @@ func (h *handler) GetByID(c *gin.Context) {
 	c.JSON(http.StatusOK, ticket)
 }
 
+// @Summary      Назначить тикет сотруднику поддержки
+// @Tags         support
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        id    path   string                         true  "UUID тикета"
+// @Param        body  body   tickets.ChangeAssignedRequest  true  "Назначение"
+// @Success      200   {object}  tickets.Ticket
+// @Failure      400   {object}  map[string]string
+// @Failure      401   {object}  map[string]string
+// @Failure      403   {object}  map[string]string
+// @Router       /support/tickets/{id}/assign [patch]
 func (h *handler) ChangeAssigned(c *gin.Context) {
 	var req ChangeAssignedRequest
 
@@ -273,6 +373,18 @@ func (h *handler) ChangeAssigned(c *gin.Context) {
 	c.JSON(http.StatusOK, ticket)
 }
 
+// @Summary      Изменить статус тикета
+// @Tags         support
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        id    path   string                      true  "UUID тикета"
+// @Param        body  body   tickets.ChangeStatusRequest true  "Новый статус"
+// @Success      200   {object}  map[string]bool
+// @Failure      400   {object}  map[string]string
+// @Failure      401   {object}  map[string]string
+// @Failure      403   {object}  map[string]string
+// @Router       /support/tickets/{id}/status [patch]
 func (h *handler) ChangeStatus(c *gin.Context) {
 	var req ChangeStatusRequest
 
@@ -299,6 +411,18 @@ func (h *handler) ChangeStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
+// @Summary      Отправить сообщение от имени поддержки
+// @Tags         support
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        id    path   string                      true  "UUID тикета"
+// @Param        body  body   tickets.CreateMessageRequest true  "Сообщение"
+// @Success      200   {object}  tickets.Message
+// @Failure      400   {object}  map[string]string
+// @Failure      401   {object}  map[string]string
+// @Failure      403   {object}  map[string]string
+// @Router       /support/tickets/{id}/messages [post]
 func (h *handler) CreateMessageBySupport(c *gin.Context) {
 	var req CreateMessageRequest
 
@@ -325,6 +449,17 @@ func (h *handler) CreateMessageBySupport(c *gin.Context) {
 	c.JSON(http.StatusOK, message)
 }
 
+// @Summary      Получить сообщения тикета (поддержка)
+// @Tags         support
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        id   path   string   true   "UUID тикета"
+// @Success      200   {array}  tickets.Message
+// @Failure      400   {object}  map[string]string
+// @Failure      401   {object}  map[string]string
+// @Failure      403   {object}  map[string]string
+// @Router       /support/tickets/{id}/messages [get]
 func (h *handler) GetMessagesForSupport(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt("userID")

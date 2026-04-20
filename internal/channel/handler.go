@@ -18,6 +18,15 @@ func NewHandler(service contacts.Service) *handler {
 	}
 }
 
+// @Summary      Инициализация веб-виджета (создание контакта)
+// @Tags         init
+// @Accept       json
+// @Produce      json
+// @Param        body  body  channel.InitWebRequest  true  "Имя и телефон"
+// @Success      200   {object}  map[string]interface{} "contact"
+// @Failure      400   {object}  map[string]string
+// @Failure      500   {object}  map[string]string
+// @Router       /init/web [post]
 func (h *handler) InitWeb(c *gin.Context) {
 	var req InitWebRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -38,6 +47,15 @@ func (h *handler) InitWeb(c *gin.Context) {
 	})
 }
 
+// @Summary      Инициализация Telegram-бота (создание контакта)
+// @Tags         init
+// @Accept       json
+// @Produce      json
+// @Param        body  body  channel.InitTelegramRequest  true  "telegram_id, имя и телефон"
+// @Success      200   {object}  map[string]interface{} "contact"
+// @Failure      400   {object}  map[string]string
+// @Failure      500   {object}  map[string]string
+// @Router       /init/telegram [post]
 func (h *handler) InitTelegram(c *gin.Context) {
 	var req InitTelegramRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

@@ -30,6 +30,17 @@ func NewHandler(service Service, logger *slog.Logger) *handler {
 	}
 }
 
+// @Summary      Создать новую категорию
+// @Description  Только администратор
+// @Tags         categories
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        body  body  categories.CreateCategoryRequest  true  "Создание категории"
+// @Success      201   {object}  categories.Category
+// @Failure      400   {object}  map[string]string
+// @Failure      500   {object}  map[string]string
+// @Router       /categories [post]
 func (h *handler) Create(c *gin.Context) {
 	var req CreateCategoryRequest
 
@@ -47,6 +58,16 @@ func (h *handler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, category)
 }
 
+// @Summary      Получить список категорий
+// @Description  Для user/web/telegram — только активные категории по destination. Для admin/support — все категории.
+// @Tags         categories
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Success      200  {array}   categories.Category
+// @Failure      401  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /categories [get]
 func (h *handler) Get(c *gin.Context) {
 	identity, ok := middleware.GetIdentity(c)
 	if !ok {
@@ -63,6 +84,19 @@ func (h *handler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, categories)
 }
 
+// @Summary      Обновить категорию
+// @Description  Только администратор
+// @Tags         categories
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        id    path      int                              true  "ID категории"
+// @Param        body  body      categories.UpdateCategoryRequest true  "Обновление"
+// @Success      200    {object}  categories.Category
+// @Failure      400    {object}  map[string]string
+// @Failure      404    {object}  map[string]string
+// @Failure      500    {object}  map[string]string
+// @Router       /categories/{id} [patch]
 func (h *handler) Update(c *gin.Context) {
 	var req UpdateCategoryRequest
 
