@@ -2,6 +2,7 @@ package categories
 
 import (
 	"context"
+	"fmt"
 )
 
 type Repository interface {
@@ -32,15 +33,27 @@ func (s *service) Create(ctx context.Context, name, destination string) (Categor
 		return Category{}, ErrInvalidDest
 	}
 
-	return s.repo.Create(ctx, name, dest)
+	category, err := s.repo.Create(ctx, name, dest)
+	if err != nil {
+		return Category{}, fmt.Errorf("create category: %w", err)
+	}
+	return category, nil
 }
 
 func (s *service) Get(ctx context.Context, role string) ([]Category, error) {
 	if role == "admin" || role == "support" {
-		return s.repo.GetAll(ctx)
+		categories, err := s.repo.GetAll(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("get category for admins: %w", err)
+		}
+		return categories, nil
 	}
 
-	return s.repo.GetForDest(ctx, role)
+	categories, err := s.repo.GetForDest(ctx, role)
+	if err != nil {
+		return nil, fmt.Errorf("get category for dest: %w", err)
+	}
+	return categories, nil
 }
 
 func (s *service) Update(ctx context.Context, id int, name *string, enabled *bool) (Category, error) {
@@ -48,5 +61,9 @@ func (s *service) Update(ctx context.Context, id int, name *string, enabled *boo
 		return Category{}, ErrInvalidName
 	}
 
-	return s.repo.Update(ctx, id, name, enabled)
+	updatedCategory, err := s.repo.Update(ctx, id, name, enabled)
+	if err != nil {
+		return Category{}, fmt.Errorf("update category: %w", err)
+	}
+	return updatedCategory, nil
 }

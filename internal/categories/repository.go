@@ -2,9 +2,6 @@ package categories
 
 import (
 	"context"
-	"database/sql"
-	"errors"
-
 	"github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
 )
@@ -26,31 +23,25 @@ func (r *postgresRepo) Create(ctx context.Context, name, destination string) (Ca
 		Destination: destination,
 	}
 
-	if err := r.db.QueryRowxContext(ctx, "INSERT INTO categories(name, destination) VALUES ($1, $2) RETURNING id, created_at", name, destination).StructScan(&category); err != nil {
-		return Category{}, err
-	}
+	err := r.db.QueryRowxContext(ctx, "INSERT INTO categories(name, destination) VALUES ($1, $2) RETURNING id, created_at", name, destination).StructScan(&category)
 
-	return category, nil
+	return category, err
 }
 
 func (r *postgresRepo) GetAll(ctx context.Context) ([]Category, error) {
 	categories := make([]Category, 0)
 
-	if err := r.db.SelectContext(ctx, &categories, "SELECT id, name, enabled, destination, created_at FROM categories ORDER BY id"); err != nil {
-		return categories, err
-	}
+	err := r.db.SelectContext(ctx, &categories, "SELECT id, name, enabled, destination, created_at FROM categories ORDER BY id")
 
-	return categories, nil
+	return categories, err
 }
 
 func (r *postgresRepo) GetForDest(ctx context.Context, destination string) ([]Category, error) {
 	categories := make([]Category, 0)
 
-	if err := r.db.SelectContext(ctx, &categories, "SELECT id, name, enabled, destination, created_at FROM categories WHERE destination = $1 AND enabled = true", destination); err != nil {
-		return categories, err
-	}
+	err := r.db.SelectContext(ctx, &categories, "SELECT id, name, enabled, destination, created_at FROM categories WHERE destination = $1 AND enabled = true", destination)
 
-	return categories, nil
+	return categories, err
 }
 
 func (r *postgresRepo) Update(ctx context.Context, id int, name *string, enabled *bool) (Category, error) {
@@ -77,26 +68,14 @@ func (r *postgresRepo) Update(ctx context.Context, id int, name *string, enabled
 	}
 
 	err = r.db.QueryRowxContext(ctx, query, args...).StructScan(&category)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return Category{}, ErrCategoryNotFound
-		}
-		return Category{}, err
-	}
 
-	return category, nil
+	return category, err
 }
 
 func (r *postgresRepo) GetByID(ctx context.Context, id int) (Category, error) {
 	var category Category
 
 	err := r.db.GetContext(ctx, &category, "SELECT id, name, enabled, destination, created_at FROM categories WHERE id = $1", id)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return Category{}, ErrCategoryNotFound
-		}
-		return Category{}, err
-	}
 
-	return category, nil
+	return category, err
 }

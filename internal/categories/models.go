@@ -5,12 +5,6 @@ import (
 	"time"
 )
 
-var (
-	ErrInvalidName      = errors.New("invalid name")
-	ErrInvalidDest      = errors.New("invalid dest")
-	ErrCategoryNotFound = errors.New("category not found")
-)
-
 type Category struct {
 	ID          int       `json:"id" db:"id"`
 	Name        string    `json:"name" db:"name"`
@@ -37,5 +31,7 @@ var destinationMapping = map[string]string{
 }
 
 var (
+	ErrInvalidName  = errors.New("invalid name")
+	ErrInvalidDest  = errors.New("invalid dest")
 	ErrUnauthorized = errors.New("unauthorized")
 )

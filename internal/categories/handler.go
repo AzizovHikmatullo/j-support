@@ -2,6 +2,7 @@ package categories
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -35,7 +36,7 @@ func (h *handler) Create(c *gin.Context) {
 
 	category, err := h.service.Create(c.Request.Context(), req.Name, req.Destination)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -51,7 +52,7 @@ func (h *handler) Get(c *gin.Context) {
 
 	categories, err := h.service.Get(c.Request.Context(), identity.Role)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -75,9 +76,20 @@ func (h *handler) Update(c *gin.Context) {
 
 	category, err := h.service.Update(c.Request.Context(), idInt, req.Name, req.Enabled)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, category)
+}
+
+func handleError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, ErrInvalidDest), errors.Is(err, ErrInvalidName):
+		c.AbortWithStatusJSON(http.StatusBadRequest, err.Error())
+	case errors.Is(err, ErrUnauthorized):
+		c.AbortWithStatusJSON(http.StatusUnauthorized, err.Error())
+	default:
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+	}
 }
