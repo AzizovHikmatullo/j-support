@@ -86,9 +86,9 @@ func (h *handler) Update(c *gin.Context) {
 func handleError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, ErrInvalidDest), errors.Is(err, ErrInvalidName):
-		c.AbortWithStatusJSON(http.StatusBadRequest, err.Error())
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	case errors.Is(err, ErrUnauthorized):
-		c.AbortWithStatusJSON(http.StatusUnauthorized, err.Error())
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 	default:
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 	}
