@@ -170,3 +170,94 @@
 - Для Telegram - `POST /init/telegram`
 - WebSocket подключение нужно делать **после** создания тикета
 - При получении `buttons` в сообщении - отображайте их пользователю
+
+---
+
+### 10. Запуск и развертывание проекта
+
+#### 10.1. Настройка окружения (.env)
+
+Создайте файл `.env` в корне проекта на основе `.env.example`:
+
+```env
+# Server
+SERVER_PORT=8080
+
+# PostgreSQL
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+POSTGRES_DB=j_support
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_strong_password
+
+# JWT
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+
+# CORS
+CORS_ALLOWED_ORIGINS=http://localhost:3000,https://your-frontend.com
+
+# WebSocket
+WS_ORIGINS=http://localhost:3000,https://your-frontend.com
+```
+
+#### 10.2. Запуск через Docker Compose
+
+**Шаг 1:** Убедитесь, что у вас установлен Docker и Docker Compose.
+
+**Шаг 2:** Запустите систему одной командой:
+
+```bash
+docker compose up -d --build
+```
+
+Приложение будет доступно по адресу:  
+**`http://localhost:8080`**
+
+Swagger UI:  
+**`http://localhost:8080/swagger/index.html`**
+
+#### 10.3. Миграции базы данных
+
+На текущий момент миграции применяются **вручную**:
+
+```bash
+# Применить миграцию вверх
+psql -h localhost -p 5438 -U postgres -d j_support -f migrations/000001_init.up.sql
+
+# Откатить миграцию (если нужно)
+psql -h localhost -p 5438 -U postgres -d j_support -f migrations/000001_init.down.sql
+```
+
+#### 10.4. Переменные окружения (полный список)
+
+| Переменная                | Описание                              | Обязательна | Пример                     |
+|---------------------------|---------------------------------------|-------------|----------------------------|
+| `SERVER_PORT`             | Порт приложения                       | Да          | 8080                       |
+| `POSTGRES_HOST`           | Хост PostgreSQL                       | Да          | db                         |
+| `POSTGRES_PORT`           | Порт PostgreSQL                       | Да          | 5432                       |
+| `POSTGRES_DB`             | Имя базы данных                       | Да          | j_support                  |
+| `POSTGRES_USER`           | Пользователь БД                       | Да          | postgres                   |
+| `POSTGRES_PASSWORD`       | Пароль пользователя                   | Да          | strong_password            |
+| `JWT_SECRET`              | Секрет для JWT                        | Да          | supersecretkey123          |
+| `CORS_ALLOWED_ORIGINS`    | Разрешённые origins через запятую     | Да          | http://localhost:3000      |
+| `WS_ORIGINS`              | Разрешённые origins для WebSocket     | Да          | http://localhost:3000      |
+
+#### 10.5. Использование фронтенда
+
+Вы можете запустить веб-сервер на python в директории frontend для обработки запросов.
+
+```bash
+cd frontend
+```
+```bash
+python -m http.server 5500
+```
+
+После этого веб-интерфейс будет доступен по адресу `http://localhost:5500`
+
+В этой же директории есть 3 файла:
+1. `admin.html` - админ-панель для управления тикетами, сценариями и категориями. Требуется вставить jwt-токен в поле.
+2. `jwt.html` - пример мобильного приложения. Требует jwt-токен для входа
+3. `widget.html` - веб-виджет. После ввода имени и телефона выдаётся уникальный токен.
+
+`⚠️ Веб-интерфейс написан с использованием ИИ-инструментов и некоторые вещи не тестировались / могут не работать`
