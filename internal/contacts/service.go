@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 )
 
 type Repository interface {
@@ -17,11 +18,14 @@ type Repository interface {
 
 type service struct {
 	repo Repository
+
+	logger *slog.Logger
 }
 
-func NewService(repo Repository) Service {
+func NewService(repo Repository, logger *slog.Logger) Service {
 	return &service{
-		repo: repo,
+		repo:   repo,
+		logger: logger,
 	}
 }
 
@@ -88,6 +92,7 @@ func (s *service) Update(ctx context.Context, id int, name, phone string) (Conta
 	if err != nil {
 		return Contact{}, fmt.Errorf("update contact: %w", err)
 	}
+	s.logger.Info("contact updated", "id", updatedContact.ID)
 	return updatedContact, nil
 }
 
@@ -110,6 +115,10 @@ func (s *service) InitContact(ctx context.Context, externalID, name, phone strin
 	}
 
 	updatedContact, err := s.repo.Update(ctx, contact.ID, name, phone)
+	if err != nil {
+		return Contact{}, err
+	}
+	s.logger.Info("contact initialized", "id", updatedContact.ID, "name", updatedContact.Name, "phone", updatedContact.Phone)
 	return updatedContact, err
 }
 

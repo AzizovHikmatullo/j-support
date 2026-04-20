@@ -3,6 +3,7 @@ package categories
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -18,11 +19,14 @@ type Service interface {
 
 type handler struct {
 	service Service
+
+	logger *slog.Logger
 }
 
-func NewHandler(service Service) *handler {
+func NewHandler(service Service, logger *slog.Logger) *handler {
 	return &handler{
 		service: service,
+		logger:  logger,
 	}
 }
 
@@ -36,7 +40,7 @@ func (h *handler) Create(c *gin.Context) {
 
 	category, err := h.service.Create(c.Request.Context(), req.Name, req.Destination)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -52,7 +56,7 @@ func (h *handler) Get(c *gin.Context) {
 
 	categories, err := h.service.Get(c.Request.Context(), identity.Role)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -76,14 +80,14 @@ func (h *handler) Update(c *gin.Context) {
 
 	category, err := h.service.Update(c.Request.Context(), idInt, req.Name, req.Enabled)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, category)
 }
 
-func handleError(c *gin.Context, err error) {
+func (h *handler) handleError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, ErrInvalidDest), errors.Is(err, ErrInvalidName):
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -91,5 +95,6 @@ func handleError(c *gin.Context, err error) {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 	default:
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		h.logger.Error("category error", "error", err.Error())
 	}
 }

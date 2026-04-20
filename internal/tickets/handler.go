@@ -3,6 +3,7 @@ package tickets
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -30,12 +31,15 @@ type Service interface {
 type handler struct {
 	service  Service
 	registry *channel.Registry
+
+	logger *slog.Logger
 }
 
-func NewHandler(service Service, registry *channel.Registry) *handler {
+func NewHandler(service Service, registry *channel.Registry, logger *slog.Logger) *handler {
 	return &handler{
 		service:  service,
 		registry: registry,
+		logger:   logger,
 	}
 }
 
@@ -63,7 +67,7 @@ func (h *handler) Create(c *gin.Context) {
 
 	ticket, err := h.service.Create(c.Request.Context(), contact.ID, userRole, identity.ChannelType, req)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -79,7 +83,7 @@ func (h *handler) GetMine(c *gin.Context) {
 
 	tickets, err := h.service.Get(c.Request.Context(), userRole, contact.ID)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -101,7 +105,7 @@ func (h *handler) GetMineByID(c *gin.Context) {
 
 	ticket, err := h.service.GetMine(c.Request.Context(), contact.ID, ticketID)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -129,7 +133,7 @@ func (h *handler) Rate(c *gin.Context) {
 
 	rating, err := h.service.RateTicket(c.Request.Context(), contact.ID, ticketID, req)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -158,7 +162,7 @@ func (h *handler) CreateMessageByUser(c *gin.Context) {
 
 	message, err := h.service.CreateMessage(c.Request.Context(), ticketID, contact.ID, userRole, req.Content)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -188,7 +192,7 @@ func (h *handler) GetMessagesForUser(c *gin.Context) {
 
 	messages, nextCursor, err := h.service.GetMessages(c.Request.Context(), contact.ID, userRole, ticketID, limit, cursor)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -217,7 +221,7 @@ func (h *handler) Get(c *gin.Context) {
 
 	tickets, err := h.service.Get(c.Request.Context(), role, userID)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -236,7 +240,7 @@ func (h *handler) GetByID(c *gin.Context) {
 
 	ticket, err := h.service.GetByID(c.Request.Context(), userID, role, ticketID)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -262,7 +266,7 @@ func (h *handler) ChangeAssigned(c *gin.Context) {
 
 	ticket, err := h.service.ChangeAssigned(c.Request.Context(), userID, role, ticketID, req.AssignedTo)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -288,7 +292,7 @@ func (h *handler) ChangeStatus(c *gin.Context) {
 
 	err = h.service.ChangeStatus(c.Request.Context(), userID, role, ticketID, req.Status)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -314,7 +318,7 @@ func (h *handler) CreateMessageBySupport(c *gin.Context) {
 
 	message, err := h.service.CreateMessage(c.Request.Context(), ticketID, userID, role, req.Content)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -341,14 +345,14 @@ func (h *handler) GetMessagesForSupport(c *gin.Context) {
 
 	messages, nextCursor, err := h.service.GetMessages(c.Request.Context(), userID, role, ticketID, limit, cursor)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"messages": messages, "nextCursor": nextCursor})
 }
 
-func handleError(c *gin.Context, err error) {
+func (h *handler) handleError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, ErrForbidden):
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": ErrForbidden.Error()})
@@ -378,5 +382,6 @@ func handleError(c *gin.Context, err error) {
 		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": ErrRatingNotFound.Error()})
 	default:
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		h.logger.Error("ticket error", "error", err.Error())
 	}
 }

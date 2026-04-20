@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/AzizovHikmatullo/j-support/internal/activity_log"
 	"github.com/AzizovHikmatullo/j-support/internal/categories"
@@ -41,15 +42,18 @@ type service struct {
 	activityLog     activity_log.Service
 	categoryRepo    categories.Repository
 	publisher       ws.Publisher
+
+	logger *slog.Logger
 }
 
-func NewService(repo Repository, categoryRepo categories.Repository, pub ws.Publisher, botService scenarioService, al activity_log.Service) Service {
+func NewService(repo Repository, categoryRepo categories.Repository, pub ws.Publisher, botService scenarioService, al activity_log.Service, logger *slog.Logger) Service {
 	return &service{
 		repo:            repo,
 		categoryRepo:    categoryRepo,
 		publisher:       pub,
 		scenarioService: botService,
 		activityLog:     al,
+		logger:          logger,
 	}
 }
 
@@ -106,6 +110,7 @@ func (s *service) Create(ctx context.Context, contactID int, role string, source
 	if err != nil {
 		return nil, fmt.Errorf("create ticket: get updated ticket: %w", err)
 	}
+	s.logger.Info("ticket created", "id", updatedTicket.ID)
 
 	return &CreateTicketResponse{
 		Ticket: &updatedTicket,
@@ -203,9 +208,10 @@ func (s *service) ChangeAssigned(ctx context.Context, userID int, role string, t
 	}
 
 	if err = s.publisher.PublishToTicket(ticketID, event); err != nil {
-		// TODO: JUST LOG ABT ERROR
+		s.logger.Error("failed to publish ws_event on change assigned", "error", err.Error())
 	}
 
+	s.logger.Info("ticket assigned changed", "ticket id", ticketID.String(), "assigned to", assignedTo)
 	return newTicket, nil
 }
 
@@ -249,9 +255,10 @@ func (s *service) ChangeStatus(ctx context.Context, userID int, role string, tic
 		Payload: map[string]any{"ticket_id": ticketID, "status": status},
 	}
 	if err = s.publisher.PublishToTicket(ticketID, event); err != nil {
-		// TODO: JUST LOG ABT ERROR
+		s.logger.Error("failed to publish ws_event on change status", "error", err.Error())
 	}
 
+	s.logger.Info("ticket status changed", "ticket id", ticketID.String(), "status", status)
 	return nil
 }
 
@@ -299,6 +306,7 @@ func (s *service) RateTicket(ctx context.Context, contactID int, ticketID uuid.U
 		Payload:   activity_log.Payload{"score": req.Score, "reason": req.Reason},
 	})
 
+	s.logger.Info("ticket rated", "ticket id", ticketID.String(), "score", req.Score)
 	return *rating, nil
 }
 
@@ -326,7 +334,7 @@ func (s *service) CreateMessage(ctx context.Context, ticketID uuid.UUID, senderI
 
 	err = s.publishMessage(ticket.ID, message, nil)
 	if err != nil {
-		// TODO: JUST LOG ABT ERROR
+		s.logger.Error("failed to publish ws_event on message create", "error", err.Error())
 	}
 
 	if ticket.Status == statusPending && senderType == "user" {
@@ -340,6 +348,7 @@ func (s *service) CreateMessage(ctx context.Context, ticketID uuid.UUID, senderI
 	}
 
 	s.logMessage(ctx, ticketID, senderID, senderType, message.Content)
+	s.logger.Info("message created", "ticket id", ticketID.String(), "message id", message.ID)
 
 	return message, nil
 }
@@ -368,7 +377,7 @@ func (s *service) CreateMessageWithButtons(ctx context.Context, ticketID uuid.UU
 
 	err = s.publishMessage(ticket.ID, message, buttons)
 	if err != nil {
-		// TODO: JUST LOG ABT ERROR
+		s.logger.Error("failed to publish ws_event on message create with buttons", "error", err.Error())
 	}
 
 	if ticket.Status == statusPending && senderType == "user" {
@@ -382,6 +391,7 @@ func (s *service) CreateMessageWithButtons(ctx context.Context, ticketID uuid.UU
 	}
 
 	s.logMessage(ctx, ticketID, senderID, senderType, message.Content)
+	s.logger.Info("message created", "ticket id", ticketID.String(), "message id", message.ID)
 
 	return message, nil
 }

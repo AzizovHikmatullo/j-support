@@ -79,8 +79,8 @@ func (a *App) InitRoutes() {
 	// ----------
 
 	categoriesRepo := categories.NewRepository(a.db)
-	categoriesService := categories.NewService(categoriesRepo)
-	categoriesHandler := categories.NewHandler(categoriesService)
+	categoriesService := categories.NewService(categoriesRepo, a.logger)
+	categoriesHandler := categories.NewHandler(categoriesService, a.logger)
 
 	categoriesRoutes := a.router.Group("/categories")
 	categoriesRoutes.Use(middleware.ChannelIdentityMiddleware(a.cfg.JWT.Secret))
@@ -95,8 +95,8 @@ func (a *App) InitRoutes() {
 	// ----------
 
 	activityRepo := activity_log.NewRepository(a.db)
-	activityService := activity_log.NewService(activityRepo)
-	activityHandler := activity_log.NewHandler(activityService)
+	activityService := activity_log.NewService(activityRepo, a.logger)
+	activityHandler := activity_log.NewHandler(activityService, a.logger)
 
 	activityRoutes := a.router.Group("/activity")
 	activityRoutes.Use(middleware.AuthMiddleware(a.cfg.JWT.Secret))
@@ -110,7 +110,7 @@ func (a *App) InitRoutes() {
 	// ----------
 
 	contactRepo := contacts.NewRepository(a.db)
-	contactService := contacts.NewService(contactRepo)
+	contactService := contacts.NewService(contactRepo, a.logger)
 
 	// ---------
 	// CHANNELS
@@ -126,16 +126,16 @@ func (a *App) InitRoutes() {
 	// ----------
 
 	ticketsRepo := tickets.NewRepository(a.db)
-	ticketsService := tickets.NewService(ticketsRepo, categoriesRepo, publisher, nil, activityService)
-	ticketsHandler := tickets.NewHandler(ticketsService, registry)
+	ticketsService := tickets.NewService(ticketsRepo, categoriesRepo, publisher, nil, activityService, a.logger)
+	ticketsHandler := tickets.NewHandler(ticketsService, registry, a.logger)
 
 	// ---------
 	// SCENARIOS
 	// ----------
 
 	scenarioRepository := scenario.NewRepository(a.db)
-	scenarioService := scenario.NewService(scenarioRepository, ticketsService)
-	scenarioHandler := scenario.NewHandler(scenarioService)
+	scenarioService := scenario.NewService(scenarioRepository, ticketsService, a.logger)
+	scenarioHandler := scenario.NewHandler(scenarioService, a.logger)
 
 	scenarioRoutes := a.router.Group("/scenarios")
 	scenarioRoutes.Use(middleware.AuthMiddleware(a.cfg.JWT.Secret))
@@ -161,7 +161,6 @@ func (a *App) InitRoutes() {
 	clientRoutes := a.router.Group("/tickets")
 	clientRoutes.Use(middleware.ChannelIdentityMiddleware(a.cfg.JWT.Secret))
 	{
-
 		clientRoutes.POST("", middleware.RequireRole("user"), idem, ticketsHandler.Create)
 		clientRoutes.GET("", middleware.RequireRole("user"), ticketsHandler.GetMine)
 		clientRoutes.GET(":id", middleware.RequireRole("user"), ticketsHandler.GetMineByID)

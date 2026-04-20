@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -37,12 +38,15 @@ type Repository interface {
 type service struct {
 	repo          Repository
 	ticketService tickets.Service
+
+	logger *slog.Logger
 }
 
-func NewService(repo Repository, ticketService tickets.Service) Service {
+func NewService(repo Repository, ticketService tickets.Service, logger *slog.Logger) Service {
 	return &service{
 		repo:          repo,
 		ticketService: ticketService,
+		logger:        logger,
 	}
 }
 
@@ -51,7 +55,7 @@ func (s *service) CreateScenario(ctx context.Context, req CreateScenarioRequest)
 	if err != nil {
 		return Scenario{}, fmt.Errorf("create scenario: %w", err)
 	}
-
+	s.logger.Info("scenario created", "id", scenario.ID)
 	return scenario, nil
 }
 
@@ -98,6 +102,7 @@ func (s *service) Update(ctx context.Context, id int, req UpdateScenarioRequest)
 	if err != nil {
 		return Scenario{}, fmt.Errorf("get all steps: %w", err)
 	}
+	s.logger.Info("scenario updated", "id", scenario.ID)
 
 	scenario.BotSteps = buildTree(steps)
 	return scenario, nil
@@ -113,6 +118,7 @@ func (s *service) Delete(ctx context.Context, id int) error {
 	if err != nil {
 		return fmt.Errorf("delete scenario: %w", err)
 	}
+	s.logger.Info("scenario deleted", "id", id)
 	return nil
 }
 
@@ -158,6 +164,7 @@ func (s *service) CreateStep(ctx context.Context, scenarioID int, req CreateStep
 	if err != nil {
 		return Step{}, fmt.Errorf("create step: %w", err)
 	}
+	s.logger.Info("new step created", "id", step.ID)
 	return step, nil
 }
 
@@ -207,6 +214,7 @@ func (s *service) UpdateStep(ctx context.Context, scenarioID, stepID int, req Up
 	if err != nil {
 		return Step{}, fmt.Errorf("update step: %w", err)
 	}
+	s.logger.Info("step updated", "id", updatedStep.ID)
 	return updatedStep, nil
 }
 
@@ -224,6 +232,7 @@ func (s *service) DeleteStep(ctx context.Context, scenarioID, stepID int) error 
 	if err != nil {
 		return fmt.Errorf("delete step: %w", err)
 	}
+	s.logger.Info("step deleted", "id", stepID)
 	return nil
 }
 
@@ -264,6 +273,7 @@ func (s *service) StartIfExists(ctx context.Context, ticketID uuid.UUID, categor
 	if err != nil {
 		return nil, nil, err
 	}
+	s.logger.Info("scenario started", "ticket id", ticketID.String())
 
 	return msg, buttons, nil
 }

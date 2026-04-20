@@ -3,6 +3,7 @@ package scenario
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -29,11 +30,14 @@ type Service interface {
 
 type handler struct {
 	service Service
+
+	logger *slog.Logger
 }
 
-func NewHandler(service Service) *handler {
+func NewHandler(service Service, logger *slog.Logger) *handler {
 	return &handler{
 		service: service,
+		logger:  logger,
 	}
 }
 
@@ -47,7 +51,7 @@ func (h *handler) Create(c *gin.Context) {
 
 	scenario, err := h.service.CreateScenario(c.Request.Context(), req)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -63,7 +67,7 @@ func (h *handler) GetByID(c *gin.Context) {
 
 	scenario, err := h.service.GetByID(c.Request.Context(), scenarioID)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -73,7 +77,7 @@ func (h *handler) GetByID(c *gin.Context) {
 func (h *handler) GetAll(c *gin.Context) {
 	scenarios, err := h.service.GetAll(c.Request.Context())
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -95,7 +99,7 @@ func (h *handler) Update(c *gin.Context) {
 
 	scenario, err := h.service.Update(c.Request.Context(), scenarioID, req)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -110,7 +114,7 @@ func (h *handler) Delete(c *gin.Context) {
 	}
 
 	if err := h.service.Delete(c.Request.Context(), id); err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -132,7 +136,7 @@ func (h *handler) CreateStep(c *gin.Context) {
 
 	step, err := h.service.CreateStep(c.Request.Context(), scenarioID, req)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -160,7 +164,7 @@ func (h *handler) UpdateStep(c *gin.Context) {
 
 	step, err := h.service.UpdateStep(c.Request.Context(), scenarioID, stepID, req)
 	if err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
@@ -181,14 +185,14 @@ func (h *handler) DeleteStep(c *gin.Context) {
 	}
 
 	if err := h.service.DeleteStep(c.Request.Context(), scenarioID, stepID); err != nil {
-		handleError(c, err)
+		h.handleError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
-func handleError(c *gin.Context, err error) {
+func (h *handler) handleError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, ErrScenarioNotFound):
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": ErrScenarioNotFound.Error()})
@@ -206,5 +210,6 @@ func handleError(c *gin.Context, err error) {
 		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
 	default:
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		h.logger.Error("scenario error", "error", err.Error())
 	}
 }

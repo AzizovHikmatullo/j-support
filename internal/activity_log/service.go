@@ -3,6 +3,7 @@ package activity_log
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 )
@@ -15,18 +16,21 @@ type Repository interface {
 
 type service struct {
 	repo Repository
+
+	logger *slog.Logger
 }
 
-func NewService(repo Repository) Service {
+func NewService(repo Repository, logger *slog.Logger) Service {
 	return &service{
-		repo: repo,
+		repo:   repo,
+		logger: logger,
 	}
 }
 
 func (s *service) Log(ctx context.Context, entry LogEntry) {
 	err := s.repo.Create(ctx, entry)
 	if err != nil {
-		// TODO: logging only
+		s.logger.Error("failed to create log", "error", err.Error())
 	}
 }
 
