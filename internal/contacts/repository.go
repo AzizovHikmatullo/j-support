@@ -27,15 +27,11 @@ func (r *postgresRepo) GetByUserID(ctx context.Context, userID string) (Contact,
 	`
 
 	err := r.db.GetContext(ctx, &contact, query, userID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return contact, ErrContactNotFound
-		}
-
-		return contact, err
+	if errors.Is(err, sql.ErrNoRows) {
+		return contact, ErrContactNotFound
 	}
 
-	return contact, nil
+	return contact, err
 }
 
 func (r *postgresRepo) GetByExternalID(ctx context.Context, externalID string) (Contact, error) {
@@ -48,15 +44,11 @@ func (r *postgresRepo) GetByExternalID(ctx context.Context, externalID string) (
 	`
 
 	err := r.db.GetContext(ctx, &contact, query, externalID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return contact, ErrContactNotFound
-		}
-
-		return contact, err
+	if errors.Is(err, sql.ErrNoRows) {
+		return contact, ErrContactNotFound
 	}
 
-	return contact, nil
+	return contact, err
 }
 
 func (r *postgresRepo) GetByID(ctx context.Context, id int) (Contact, error) {
@@ -69,15 +61,11 @@ func (r *postgresRepo) GetByID(ctx context.Context, id int) (Contact, error) {
 	`
 
 	err := r.db.GetContext(ctx, &contact, query, id)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return contact, ErrContactNotFound
-		}
-
-		return contact, err
+	if errors.Is(err, sql.ErrNoRows) {
+		return contact, ErrContactNotFound
 	}
 
-	return contact, nil
+	return contact, err
 }
 
 func (r *postgresRepo) GetByPhone(ctx context.Context, phone string) (Contact, error) {
@@ -90,15 +78,11 @@ func (r *postgresRepo) GetByPhone(ctx context.Context, phone string) (Contact, e
 	`
 
 	err := r.db.GetContext(ctx, &contact, query, phone)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return contact, ErrContactNotFound
-		}
-
-		return contact, err
+	if errors.Is(err, sql.ErrNoRows) {
+		return contact, ErrContactNotFound
 	}
 
-	return contact, nil
+	return contact, err
 }
 
 func (r *postgresRepo) Create(ctx context.Context, contact *Contact) error {
@@ -114,11 +98,8 @@ func (r *postgresRepo) Create(ctx context.Context, contact *Contact) error {
 		contact.Name,
 		contact.Phone,
 	).Scan(&contact.ID, &contact.CreatedAt)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }
 
 func (r *postgresRepo) Update(ctx context.Context, id int, name, phone string) (Contact, error) {
@@ -136,13 +117,9 @@ func (r *postgresRepo) Update(ctx context.Context, id int, name, phone string) (
 		name,
 		phone,
 	).StructScan(&contact)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return Contact{}, ErrContactNotFound
-		}
-
-		return Contact{}, err
+	if errors.Is(err, sql.ErrNoRows) {
+		return contact, ErrContactNotFound
 	}
 
-	return contact, nil
+	return contact, err
 }

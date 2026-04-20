@@ -2,14 +2,8 @@ package contacts
 
 import (
 	"errors"
+	"regexp"
 	"time"
-)
-
-var (
-	ErrContactNotFound = errors.New("contact not found")
-	ErrInvalidPhone    = errors.New("invalid phone")
-	ErrInvalidName     = errors.New("invalid name")
-	ErrUndefined       = errors.New("undefined")
 )
 
 type Contact struct {
@@ -25,3 +19,11 @@ type UpdateContactRequest struct {
 	Name  string `json:"name" binding:"required"`
 	Phone string `json:"phone" binding:"required"`
 }
+
+var tjPhoneRegex = regexp.MustCompile(`^(?:\+992|992)?\d{9}$`)
+
+var (
+	ErrContactNotFound = errors.New("contact not found")
+	ErrInvalidPhone    = errors.New("invalid phone")
+	ErrInvalidName     = errors.New("invalid name")
+)

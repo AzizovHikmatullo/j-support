@@ -3,6 +3,7 @@ package contacts
 import (
 	"context"
 	"errors"
+	"fmt"
 )
 
 type Repository interface {
@@ -26,14 +27,22 @@ func NewService(repo Repository) Service {
 
 func (s *service) Resolve(ctx context.Context, userID, externalID *string) (Contact, error) {
 	if userID != nil {
-		return s.resolveByUserID(ctx, userID)
+		contact, err := s.resolveByUserID(ctx, userID)
+		if err != nil {
+			return Contact{}, fmt.Errorf("resolve by userID: %w", err)
+		}
+		return contact, nil
 	}
 
 	if externalID != nil {
-		return s.resolveByExternalID(ctx, externalID)
+		contact, err := s.resolveByExternalID(ctx, externalID)
+		if err != nil {
+			return Contact{}, fmt.Errorf("resolve by externalID: %w", err)
+		}
+		return contact, nil
 	}
 
-	return Contact{}, ErrUndefined
+	return Contact{}, fmt.Errorf("resolve contact: userID and externalID is nil")
 }
 
 func (s *service) resolveByUserID(ctx context.Context, userID *string) (Contact, error) {
@@ -71,11 +80,15 @@ func (s *service) Update(ctx context.Context, id int, name, phone string) (Conta
 		return Contact{}, ErrInvalidName
 	}
 
-	if phone == "" { // TODO: phone check
+	if !s.checkPhone(phone) {
 		return Contact{}, ErrInvalidPhone
 	}
 
-	return s.repo.Update(ctx, id, name, phone)
+	updatedContact, err := s.repo.Update(ctx, id, name, phone)
+	if err != nil {
+		return Contact{}, fmt.Errorf("update contact: %w", err)
+	}
+	return updatedContact, nil
 }
 
 func (s *service) InitContact(ctx context.Context, externalID, name, phone string) (Contact, error) {
@@ -98,4 +111,8 @@ func (s *service) InitContact(ctx context.Context, externalID, name, phone strin
 
 	updatedContact, err := s.repo.Update(ctx, contact.ID, name, phone)
 	return updatedContact, err
+}
+
+func (s *service) checkPhone(phone string) bool {
+	return tjPhoneRegex.MatchString(phone)
 }
