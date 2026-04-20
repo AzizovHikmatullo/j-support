@@ -2,6 +2,7 @@ package scenario
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -46,7 +47,7 @@ func (h *handler) Create(c *gin.Context) {
 
 	scenario, err := h.service.CreateScenario(c.Request.Context(), req)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -62,7 +63,7 @@ func (h *handler) GetByID(c *gin.Context) {
 
 	scenario, err := h.service.GetByID(c.Request.Context(), scenarioID)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -72,7 +73,7 @@ func (h *handler) GetByID(c *gin.Context) {
 func (h *handler) GetAll(c *gin.Context) {
 	scenarios, err := h.service.GetAll(c.Request.Context())
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -94,7 +95,7 @@ func (h *handler) Update(c *gin.Context) {
 
 	scenario, err := h.service.Update(c.Request.Context(), scenarioID, req)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -109,7 +110,7 @@ func (h *handler) Delete(c *gin.Context) {
 	}
 
 	if err := h.service.Delete(c.Request.Context(), id); err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -131,7 +132,7 @@ func (h *handler) CreateStep(c *gin.Context) {
 
 	step, err := h.service.CreateStep(c.Request.Context(), scenarioID, req)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -159,7 +160,7 @@ func (h *handler) UpdateStep(c *gin.Context) {
 
 	step, err := h.service.UpdateStep(c.Request.Context(), scenarioID, stepID, req)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -180,9 +181,30 @@ func (h *handler) DeleteStep(c *gin.Context) {
 	}
 
 	if err := h.service.DeleteStep(c.Request.Context(), scenarioID, stepID); err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func handleError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, ErrScenarioNotFound):
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": ErrScenarioNotFound.Error()})
+	case errors.Is(err, ErrStepNotFound):
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": ErrStepNotFound.Error()})
+	case errors.Is(err, ErrSessionNotFound):
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": ErrSessionNotFound.Error()})
+	case errors.Is(err, ErrParentNotFound):
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": ErrParentNotFound.Error()})
+	case errors.Is(err, ErrRootAlreadyExists):
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": ErrRootAlreadyExists.Error()})
+	case errors.Is(err, ErrDefaultAlreadyExists):
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": ErrDefaultAlreadyExists.Error()})
+	case errors.Is(err, ErrWrongScenario):
+		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+	default:
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+	}
 }

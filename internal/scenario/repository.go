@@ -31,11 +31,8 @@ func (r *postgresRepo) CreateScenario(ctx context.Context, categoryID int) (Scen
 	`
 
 	err := r.db.QueryRowxContext(ctx, query, categoryID).StructScan(&scenario)
-	if err != nil {
-		return Scenario{}, ErrCreateScenario
-	}
 
-	return scenario, nil
+	return scenario, err
 }
 
 func (r *postgresRepo) GetByID(ctx context.Context, id int) (Scenario, error) {
@@ -48,14 +45,11 @@ func (r *postgresRepo) GetByID(ctx context.Context, id int) (Scenario, error) {
 	`
 
 	err := r.db.GetContext(ctx, &scenario, query, id)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return Scenario{}, ErrScenarioNotFound
-		}
-		return Scenario{}, ErrGetScenario
+	if errors.Is(err, sql.ErrNoRows) {
+		return scenario, ErrScenarioNotFound
 	}
 
-	return scenario, nil
+	return scenario, err
 }
 
 func (r *postgresRepo) GetAll(ctx context.Context) ([]Scenario, error) {
@@ -68,11 +62,8 @@ func (r *postgresRepo) GetAll(ctx context.Context) ([]Scenario, error) {
 	`
 
 	err := r.db.SelectContext(ctx, &scenarios, query)
-	if err != nil {
-		return nil, ErrGetScenario
-	}
 
-	return scenarios, nil
+	return scenarios, err
 }
 
 func (r *postgresRepo) Update(ctx context.Context, scenarioID int, req UpdateScenarioRequest) (Scenario, error) {
@@ -90,8 +81,9 @@ func (r *postgresRepo) Update(ctx context.Context, scenarioID int, req UpdateSce
 		req.IsActive,
 	).StructScan(&scenario)
 	if errors.Is(err, sql.ErrNoRows) {
-		return Scenario{}, ErrScenarioNotFound
+		return scenario, ErrScenarioNotFound
 	}
+
 	return scenario, err
 }
 
@@ -99,11 +91,7 @@ func (r *postgresRepo) Delete(ctx context.Context, id int) error {
 	query := `DELETE FROM bot_scenarios WHERE id = $1`
 
 	_, err := r.db.ExecContext(ctx, query, id)
-	if err != nil {
-		return ErrDeleteScenario
-	}
-
-	return nil
+	return err
 }
 
 func (r *postgresRepo) GetActiveScenario(ctx context.Context, categoryID int) (Scenario, error) {
@@ -116,14 +104,11 @@ func (r *postgresRepo) GetActiveScenario(ctx context.Context, categoryID int) (S
 	`
 
 	err := r.db.GetContext(ctx, &scenario, query, categoryID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return Scenario{}, ErrScenarioNotFound
-		}
-		return Scenario{}, ErrGetScenario
+	if errors.Is(err, sql.ErrNoRows) {
+		return scenario, ErrScenarioNotFound
 	}
 
-	return scenario, nil
+	return scenario, err
 }
 
 func (r *postgresRepo) CreateStep(ctx context.Context, scenarioID int, req CreateStepRequest) (Step, error) {
@@ -141,9 +126,7 @@ func (r *postgresRepo) CreateStep(ctx context.Context, scenarioID int, req Creat
 		req.Condition,
 		req.Question,
 	).StructScan(&step)
-	if err != nil {
-		return Step{}, ErrCreateStep
-	}
+
 	return step, err
 }
 
@@ -158,11 +141,8 @@ func (r *postgresRepo) GetAllSteps(ctx context.Context, scenarioID int) ([]Step,
 	`
 
 	err := r.db.SelectContext(ctx, &steps, query, scenarioID)
-	if err != nil {
-		return nil, ErrGetSteps
-	}
 
-	return steps, nil
+	return steps, err
 }
 
 func (r *postgresRepo) GetStep(ctx context.Context, stepID int) (Step, error) {
@@ -175,12 +155,10 @@ func (r *postgresRepo) GetStep(ctx context.Context, stepID int) (Step, error) {
     `
 
 	err := r.db.GetContext(ctx, &step, query, stepID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return Step{}, ErrStepNotFound
-		}
-		return Step{}, ErrGetStep
+	if errors.Is(err, sql.ErrNoRows) {
+		return step, ErrStepNotFound
 	}
+
 	return step, err
 }
 
@@ -194,13 +172,11 @@ func (r *postgresRepo) GetRootStep(ctx context.Context, scenarioID int) (Step, e
     `
 
 	err := r.db.GetContext(ctx, &step, query, scenarioID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return Step{}, ErrStepNotFound
-		}
-		return Step{}, ErrGetRootStep
+	if errors.Is(err, sql.ErrNoRows) {
+		return step, ErrStepNotFound
 	}
-	return step, nil
+
+	return step, err
 }
 
 func (r *postgresRepo) GetChildren(ctx context.Context, parentID int) ([]Step, error) {
@@ -213,9 +189,7 @@ func (r *postgresRepo) GetChildren(ctx context.Context, parentID int) ([]Step, e
     `
 
 	err := r.db.SelectContext(ctx, &steps, query, parentID)
-	if err != nil {
-		return nil, ErrGetChildren
-	}
+
 	return steps, err
 }
 
@@ -242,26 +216,19 @@ func (r *postgresRepo) UpdateStep(ctx context.Context, stepID int, req UpdateSte
 	}
 
 	err = r.db.QueryRowxContext(ctx, query, args...).StructScan(&step)
-
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return Step{}, ErrStepNotFound
-		}
-		return Step{}, ErrUpdateStep
+	if errors.Is(err, sql.ErrNoRows) {
+		return step, ErrStepNotFound
 	}
 
-	return step, nil
+	return step, err
 }
 
 func (r *postgresRepo) DeleteStep(ctx context.Context, stepID int) error {
 	query := `DELETE FROM bot_steps WHERE id = $1`
 
 	_, err := r.db.ExecContext(ctx, query, stepID)
-	if err != nil {
-		return ErrDeleteStep
-	}
 
-	return nil
+	return err
 }
 
 func (r *postgresRepo) CreateSession(ctx context.Context, ticketID uuid.UUID, scenarioID, stepID int) error {
@@ -271,11 +238,8 @@ func (r *postgresRepo) CreateSession(ctx context.Context, ticketID uuid.UUID, sc
 	`
 
 	_, err := r.db.ExecContext(ctx, query, ticketID, scenarioID, stepID)
-	if err != nil {
-		return ErrCreateSession
-	}
 
-	return nil
+	return err
 }
 
 func (r *postgresRepo) GetSession(ctx context.Context, ticketID uuid.UUID) (Session, error) {
@@ -288,14 +252,11 @@ func (r *postgresRepo) GetSession(ctx context.Context, ticketID uuid.UUID) (Sess
 	`
 
 	err := r.db.GetContext(ctx, &session, query, ticketID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return Session{}, ErrSessionNotFound
-		}
-		return Session{}, ErrGetSession
+	if errors.Is(err, sql.ErrNoRows) {
+		return session, ErrSessionNotFound
 	}
 
-	return session, nil
+	return session, err
 }
 
 func (r *postgresRepo) GetInactiveSessions(ctx context.Context, cutoff time.Time) ([]Session, error) {
@@ -309,11 +270,8 @@ func (r *postgresRepo) GetInactiveSessions(ctx context.Context, cutoff time.Time
 	var sessions []Session
 
 	err := r.db.SelectContext(ctx, &sessions, query, cutoff)
-	if err != nil {
-		return nil, err
-	}
 
-	return sessions, nil
+	return sessions, err
 }
 
 func (r *postgresRepo) UpdateSession(ctx context.Context, ticketID uuid.UUID, nextStepID int) error {
@@ -324,11 +282,11 @@ func (r *postgresRepo) UpdateSession(ctx context.Context, ticketID uuid.UUID, ne
     `
 
 	_, err := r.db.ExecContext(ctx, query, ticketID, nextStepID)
-	if err != nil {
-		return ErrUpdateSession
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrSessionNotFound
 	}
 
-	return nil
+	return err
 }
 
 func (r *postgresRepo) UpdateLastActivity(ctx context.Context, ticketID uuid.UUID) error {
@@ -339,9 +297,6 @@ func (r *postgresRepo) UpdateLastActivity(ctx context.Context, ticketID uuid.UUI
     `
 
 	_, err := r.db.ExecContext(ctx, query, ticketID)
-	if err != nil {
-		return ErrUpdateActivity
-	}
 
-	return nil
+	return err
 }

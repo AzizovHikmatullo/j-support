@@ -3,6 +3,7 @@ package scenario
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -48,7 +49,7 @@ func NewService(repo Repository, ticketService tickets.Service) Service {
 func (s *service) CreateScenario(ctx context.Context, req CreateScenarioRequest) (Scenario, error) {
 	scenario, err := s.repo.CreateScenario(ctx, req.CategoryID)
 	if err != nil {
-		return Scenario{}, err
+		return Scenario{}, fmt.Errorf("create scenario: %w", err)
 	}
 
 	return scenario, nil
@@ -57,12 +58,12 @@ func (s *service) CreateScenario(ctx context.Context, req CreateScenarioRequest)
 func (s *service) GetByID(ctx context.Context, id int) (Scenario, error) {
 	scenario, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return Scenario{}, err
+		return Scenario{}, fmt.Errorf("get scenario by id: %w", err)
 	}
 
 	steps, err := s.repo.GetAllSteps(ctx, id)
 	if err != nil {
-		return Scenario{}, err
+		return Scenario{}, fmt.Errorf("get steps for scenario: %w", err)
 	}
 
 	scenario.BotSteps = buildTree(steps)
@@ -73,13 +74,13 @@ func (s *service) GetByID(ctx context.Context, id int) (Scenario, error) {
 func (s *service) GetAll(ctx context.Context) ([]Scenario, error) {
 	scenarios, err := s.repo.GetAll(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get all scenarios: %w", err)
 	}
 
 	for i, sc := range scenarios {
 		steps, err := s.repo.GetAllSteps(ctx, sc.ID)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("get all steps: %w", err)
 		}
 		scenarios[i].BotSteps = buildTree(steps)
 	}
@@ -90,12 +91,12 @@ func (s *service) GetAll(ctx context.Context) ([]Scenario, error) {
 func (s *service) Update(ctx context.Context, id int, req UpdateScenarioRequest) (Scenario, error) {
 	scenario, err := s.repo.Update(ctx, id, req)
 	if err != nil {
-		return Scenario{}, err
+		return Scenario{}, fmt.Errorf("update scenario: %w", err)
 	}
 
 	steps, err := s.repo.GetAllSteps(ctx, id)
 	if err != nil {
-		return Scenario{}, err
+		return Scenario{}, fmt.Errorf("get all steps: %w", err)
 	}
 
 	scenario.BotSteps = buildTree(steps)
@@ -105,15 +106,20 @@ func (s *service) Update(ctx context.Context, id int, req UpdateScenarioRequest)
 func (s *service) Delete(ctx context.Context, id int) error {
 	_, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("get scenario by id: %w", err)
 	}
-	return s.repo.Delete(ctx, id)
+
+	err = s.repo.Delete(ctx, id)
+	if err != nil {
+		return fmt.Errorf("delete scenario: %w", err)
+	}
+	return nil
 }
 
 func (s *service) CreateStep(ctx context.Context, scenarioID int, req CreateStepRequest) (Step, error) {
 	_, err := s.repo.GetByID(ctx, scenarioID)
 	if err != nil {
-		return Step{}, err
+		return Step{}, fmt.Errorf("get by id: %w", err)
 	}
 
 	if req.ParentID == nil {
@@ -122,16 +128,14 @@ func (s *service) CreateStep(ctx context.Context, scenarioID int, req CreateStep
 			return Step{}, ErrRootAlreadyExists
 		}
 		if !errors.Is(err, ErrStepNotFound) {
-			return Step{}, err
+			return Step{}, ErrStepNotFound
 		}
 	} else {
 		parent, err := s.repo.GetStep(ctx, *req.ParentID)
-		if errors.Is(err, ErrStepNotFound) {
-			return Step{}, ErrParentNotFound
-		}
 		if err != nil {
-			return Step{}, err
+			return Step{}, fmt.Errorf("get step: %w", err)
 		}
+
 		if parent.ScenarioID != scenarioID {
 			return Step{}, ErrWrongScenario
 		}
@@ -139,8 +143,9 @@ func (s *service) CreateStep(ctx context.Context, scenarioID int, req CreateStep
 		if req.Condition == nil {
 			children, err := s.repo.GetChildren(ctx, *req.ParentID)
 			if err != nil {
-				return Step{}, err
+				return Step{}, fmt.Errorf("get children: %w", err)
 			}
+
 			for _, ch := range children {
 				if ch.Condition == nil {
 					return Step{}, ErrDefaultAlreadyExists
@@ -149,18 +154,22 @@ func (s *service) CreateStep(ctx context.Context, scenarioID int, req CreateStep
 		}
 	}
 
-	return s.repo.CreateStep(ctx, scenarioID, req)
+	step, err := s.repo.CreateStep(ctx, scenarioID, req)
+	if err != nil {
+		return Step{}, fmt.Errorf("create step: %w", err)
+	}
+	return step, nil
 }
 
 func (s *service) GetButtonsForCurrentStep(ctx context.Context, ticketID uuid.UUID) ([]string, error) {
 	session, err := s.repo.GetSession(ctx, ticketID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get session: %w", err)
 	}
 
 	children, err := s.repo.GetChildren(ctx, session.CurrentStepID)
-	if err != nil || len(children) == 0 {
-		return nil, err
+	if err != nil {
+		return nil, fmt.Errorf("get children: %w", err)
 	}
 
 	var buttons []string
@@ -175,8 +184,9 @@ func (s *service) GetButtonsForCurrentStep(ctx context.Context, ticketID uuid.UU
 func (s *service) UpdateStep(ctx context.Context, scenarioID, stepID int, req UpdateStepRequest) (Step, error) {
 	step, err := s.repo.GetStep(ctx, stepID)
 	if err != nil {
-		return Step{}, err
+		return Step{}, fmt.Errorf("update step: get step: %w", err)
 	}
+
 	if step.ScenarioID != scenarioID {
 		return Step{}, ErrWrongScenario
 	}
@@ -184,7 +194,7 @@ func (s *service) UpdateStep(ctx context.Context, scenarioID, stepID int, req Up
 	if req.Condition == nil && step.ParentID != nil {
 		children, err := s.repo.GetChildren(ctx, *step.ParentID)
 		if err != nil {
-			return Step{}, err
+			return Step{}, fmt.Errorf("get children: %w", err)
 		}
 		for _, ch := range children {
 			if ch.Condition == nil && ch.ID != stepID {
@@ -193,18 +203,28 @@ func (s *service) UpdateStep(ctx context.Context, scenarioID, stepID int, req Up
 		}
 	}
 
-	return s.repo.UpdateStep(ctx, stepID, req)
+	updatedStep, err := s.repo.UpdateStep(ctx, stepID, req)
+	if err != nil {
+		return Step{}, fmt.Errorf("update step: %w", err)
+	}
+	return updatedStep, nil
 }
 
 func (s *service) DeleteStep(ctx context.Context, scenarioID, stepID int) error {
 	step, err := s.repo.GetStep(ctx, stepID)
 	if err != nil {
-		return err
+		return fmt.Errorf("delete step: get step: %w", err)
 	}
+
 	if step.ScenarioID != scenarioID {
 		return ErrWrongScenario
 	}
-	return s.repo.DeleteStep(ctx, stepID)
+
+	err = s.repo.DeleteStep(ctx, stepID)
+	if err != nil {
+		return fmt.Errorf("delete step: %w", err)
+	}
+	return nil
 }
 
 func (s *service) StartIfExists(ctx context.Context, ticketID uuid.UUID, categoryID int) (*tickets.Message, []string, error) {
@@ -214,19 +234,21 @@ func (s *service) StartIfExists(ctx context.Context, ticketID uuid.UUID, categor
 	}
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("scenario start: %w", err)
 	}
 
 	rootStep, err := s.repo.GetRootStep(ctx, scenario.ID)
 	if errors.Is(err, ErrStepNotFound) {
 		return nil, nil, s.ticketService.ChangeStatus(ctx, 0, "bot", ticketID, "open")
 	}
+
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("get root step: %w", err)
 	}
 
-	if err := s.repo.CreateSession(ctx, ticketID, scenario.ID, rootStep.ID); err != nil {
-		return nil, nil, err
+	err = s.repo.CreateSession(ctx, ticketID, scenario.ID, rootStep.ID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create sessoin: %w", err)
 	}
 
 	if err := s.ticketService.ChangeStatus(ctx, 0, "bot", ticketID, "pending"); err != nil {
@@ -235,7 +257,7 @@ func (s *service) StartIfExists(ctx context.Context, ticketID uuid.UUID, categor
 
 	buttons, err := s.GetButtonsForCurrentStep(ctx, ticketID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("get button for current step: %w", err)
 	}
 
 	msg, err := s.ticketService.CreateMessageWithButtons(ctx, ticketID, 0, "bot", rootStep.Question, buttons)
@@ -249,16 +271,16 @@ func (s *service) StartIfExists(ctx context.Context, ticketID uuid.UUID, categor
 func (s *service) HandleMessage(ctx context.Context, ticketID uuid.UUID, answer string) (*string, error) {
 	session, err := s.repo.GetSession(ctx, ticketID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get session: %w", err)
 	}
 
 	if err = s.repo.UpdateLastActivity(ctx, ticketID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("update last activity: %w", err)
 	}
 
 	children, err := s.repo.GetChildren(ctx, session.CurrentStepID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get children: %w", err)
 	}
 
 	next := findNext(children, answer)
@@ -268,12 +290,12 @@ func (s *service) HandleMessage(ctx context.Context, ticketID uuid.UUID, answer 
 	}
 
 	if err := s.repo.UpdateSession(ctx, ticketID, next.ID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("update session: %w", err)
 	}
 
 	nextChildren, err := s.repo.GetChildren(ctx, next.ID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get next children: %w", err)
 	}
 
 	if len(nextChildren) == 0 {
