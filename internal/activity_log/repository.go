@@ -2,7 +2,6 @@ package activity_log
 
 import (
 	"context"
-
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
@@ -27,37 +26,34 @@ func (r *repository) Create(ctx context.Context, entry LogEntry) error {
 		entry.Action,
 		entry.Payload,
 	)
-	if err != nil {
-		return ErrCreate
-	}
-	return nil
+	return err
 }
 
 func (r *repository) GetAll(ctx context.Context) ([]ActivityLog, error) {
 	var logs []ActivityLog
+
 	query := `
 		SELECT *
 		FROM activity_log
 		ORDER BY created_at DESC
 	`
+
 	err := r.db.SelectContext(ctx, &logs, query)
-	if err != nil {
-		return nil, ErrGetAll
-	}
-	return logs, nil
+
+	return logs, err
 }
 
 func (r *repository) GetByTicket(ctx context.Context, ticketID uuid.UUID) ([]ActivityLog, error) {
 	var logs []ActivityLog
+
 	query := `
 		SELECT *
 		FROM activity_log
 		WHERE ticket_id = $1
 		ORDER BY created_at DESC
 	`
+
 	err := r.db.SelectContext(ctx, &logs, query, ticketID)
-	if err != nil {
-		return nil, ErrGetByTicket
-	}
-	return logs, nil
+
+	return logs, err
 }

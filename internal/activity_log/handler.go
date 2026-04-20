@@ -27,7 +27,7 @@ func NewHandler(service Service) *handler {
 func (h *handler) GetAll(c *gin.Context) {
 	logs, err := h.service.GetAll(c.Request.Context())
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
@@ -43,9 +43,16 @@ func (h *handler) GetByTicket(c *gin.Context) {
 
 	logs, err := h.service.GetByTicket(c.Request.Context(), ticketID)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, logs)
+}
+
+func handleError(c *gin.Context, err error) {
+	switch err {
+	default:
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+	}
 }
