@@ -1,0 +1,1373 @@
+basePath: /
+definitions:
+  activity_log.ActivityLog:
+    properties:
+      action:
+        type: string
+      actor_id:
+        type: integer
+      actor_type:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      payload:
+        $ref: '#/definitions/activity_log.Payload'
+      ticket_id:
+        type: string
+    type: object
+  activity_log.Payload:
+    additionalProperties: {}
+    type: object
+  categories.Category:
+    properties:
+      created_at:
+        type: string
+      destination:
+        type: string
+      enabled:
+        type: boolean
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  categories.CreateCategoryRequest:
+    properties:
+      destination:
+        type: string
+      name:
+        type: string
+    type: object
+  categories.UpdateCategoryRequest:
+    properties:
+      enabled:
+        type: boolean
+      name:
+        type: string
+    type: object
+  channel.InitTelegramRequest:
+    properties:
+      name:
+        type: string
+      phone:
+        type: string
+      telegram_id:
+        type: string
+    required:
+    - name
+    - phone
+    - telegram_id
+    type: object
+  channel.InitWebRequest:
+    properties:
+      name:
+        type: string
+      phone:
+        type: string
+    required:
+    - name
+    - phone
+    type: object
+  scenario.CreateScenarioRequest:
+    properties:
+      category_id:
+        type: integer
+    required:
+    - category_id
+    type: object
+  scenario.CreateStepRequest:
+    properties:
+      condition:
+        type: string
+      parent_id:
+        type: integer
+      question:
+        type: string
+    required:
+    - question
+    type: object
+  scenario.Scenario:
+    properties:
+      category_id:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      steps:
+        items:
+          $ref: '#/definitions/scenario.StepNode'
+        type: array
+    type: object
+  scenario.Step:
+    properties:
+      condition:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      parent_id:
+        type: integer
+      question:
+        type: string
+      scenario_id:
+        type: integer
+    type: object
+  scenario.StepNode:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/scenario.StepNode'
+        type: array
+      condition:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      parent_id:
+        type: integer
+      question:
+        type: string
+      scenario_id:
+        type: integer
+    type: object
+  scenario.UpdateScenarioRequest:
+    properties:
+      is_active:
+        type: boolean
+    type: object
+  scenario.UpdateStepRequest:
+    properties:
+      condition:
+        type: string
+      question:
+        type: string
+    type: object
+  tickets.ChangeAssignedRequest:
+    properties:
+      assigned_to:
+        type: integer
+    required:
+    - assigned_to
+    type: object
+  tickets.ChangeStatusRequest:
+    properties:
+      status:
+        type: string
+    required:
+    - status
+    type: object
+  tickets.CreateMessageRequest:
+    properties:
+      content:
+        maxLength: 150
+        minLength: 1
+        type: string
+    required:
+    - content
+    type: object
+  tickets.CreateRatingRequest:
+    properties:
+      reason:
+        type: string
+      score:
+        type: integer
+    required:
+    - score
+    type: object
+  tickets.CreateTicketRequest:
+    properties:
+      category_id:
+        type: integer
+    required:
+    - category_id
+    type: object
+  tickets.CreateTicketResponse:
+    properties:
+      assigned_to:
+        type: integer
+      category_id:
+        type: integer
+      created_at:
+        type: string
+      creator_id:
+        type: integer
+      first_message:
+        $ref: '#/definitions/tickets.MessageWithButtons'
+      id:
+        type: string
+      source:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  tickets.Message:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      sender_id:
+        type: integer
+      sender_type:
+        type: string
+      ticket_id:
+        type: string
+    type: object
+  tickets.MessageWithButtons:
+    properties:
+      buttons:
+        items:
+          type: string
+        type: array
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      sender_id:
+        type: integer
+      sender_type:
+        type: string
+      ticket_id:
+        type: string
+    type: object
+  tickets.Rating:
+    properties:
+      contact_id:
+        type: integer
+      id:
+        type: integer
+      reason:
+        type: string
+      score:
+        type: integer
+      ticket_id:
+        type: string
+    type: object
+  tickets.Ticket:
+    properties:
+      assigned_to:
+        type: integer
+      category_id:
+        type: integer
+      created_at:
+        type: string
+      creator_id:
+        type: integer
+      id:
+        type: string
+      source:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    name: Hikmatullo Azizov
+  description: Система поддержки клиентов с тикетами, сценариями бота и мультиканальностью
+  title: J-Support API
+  version: "1.0"
+paths:
+  /activity:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/activity_log.ActivityLog'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Получить весь лог активности
+      tags:
+      - activity
+  /activity/{id}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: UUID тикета
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/activity_log.ActivityLog'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Получить лог активности по тикету
+      tags:
+      - activity
+  /categories:
+    get:
+      consumes:
+      - application/json
+      description: Для user/web/telegram — только активные категории по destination.
+        Для admin/support — все категории.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/categories.Category'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Получить список категорий
+      tags:
+      - categories
+    post:
+      consumes:
+      - application/json
+      description: Только администратор
+      parameters:
+      - description: Создание категории
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/categories.CreateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/categories.Category'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Создать новую категорию
+      tags:
+      - categories
+  /categories/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: Только администратор
+      parameters:
+      - description: ID категории
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Обновление
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/categories.UpdateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/categories.Category'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Обновить категорию
+      tags:
+      - categories
+  /init/telegram:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: telegram_id, имя и телефон
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/channel.InitTelegramRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: contact
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Инициализация Telegram-бота (создание контакта)
+      tags:
+      - init
+  /init/web:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Имя и телефон
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/channel.InitWebRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: contact
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Инициализация веб-виджета (создание контакта)
+      tags:
+      - init
+  /scenarios:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/scenario.Scenario'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Получить все сценарии
+      tags:
+      - scenarios
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Сценарий
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/scenario.CreateScenarioRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/scenario.Scenario'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Создать сценарий бота
+      tags:
+      - scenarios
+  /scenarios/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID сценария
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Удалить сценарий
+      tags:
+      - scenarios
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID сценария
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/scenario.Scenario'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Получить сценарий по ID
+      tags:
+      - scenarios
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID сценария
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Обновление
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/scenario.UpdateScenarioRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/scenario.Scenario'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Обновить сценарий
+      tags:
+      - scenarios
+  /scenarios/{id}/steps:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID сценария
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новый шаг
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/scenario.CreateStepRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/scenario.Step'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Добавить шаг в сценарий
+      tags:
+      - scenarios
+  /scenarios/{id}/steps/{stepID}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID сценария
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID шага
+        in: path
+        name: stepID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Удалить шаг сценария
+      tags:
+      - scenarios
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID сценария
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID шага
+        in: path
+        name: stepID
+        required: true
+        type: integer
+      - description: Обновление
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/scenario.UpdateStepRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/scenario.Step'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Обновить шаг сценария
+      tags:
+      - scenarios
+  /support/tickets:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/tickets.Ticket'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Получить тикеты для поддержки / админа
+      tags:
+      - support
+  /support/tickets/{id}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: UUID тикета
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/tickets.Ticket'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Получить тикет по ID (поддержка)
+      tags:
+      - support
+  /support/tickets/{id}/assign:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: UUID тикета
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Назначение
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/tickets.ChangeAssignedRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/tickets.Ticket'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Назначить тикет сотруднику поддержки
+      tags:
+      - support
+  /support/tickets/{id}/messages:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: UUID тикета
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/tickets.Message'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Получить сообщения тикета (поддержка)
+      tags:
+      - support
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: UUID тикета
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Сообщение
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/tickets.CreateMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/tickets.Message'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Отправить сообщение от имени поддержки
+      tags:
+      - support
+  /support/tickets/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: UUID тикета
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Новый статус
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/tickets.ChangeStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Изменить статус тикета
+      tags:
+      - support
+  /tickets:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/tickets.Ticket'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Получить все мои тикеты
+      tags:
+      - tickets
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Данные тикета
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/tickets.CreateTicketRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/tickets.CreateTicketResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Создать тикет
+      tags:
+      - tickets
+  /tickets/{id}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: UUID тикета
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/tickets.Ticket'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Получить мой тикет по ID
+      tags:
+      - tickets
+  /tickets/{id}/messages:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: UUID тикета
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/tickets.Message'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Получить сообщения тикета (пользователь)
+      tags:
+      - tickets
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: UUID тикета
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Сообщение
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/tickets.CreateMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/tickets.Message'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Отправить сообщение в тикет (от пользователя)
+      tags:
+      - tickets
+  /tickets/{id}/rate:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: UUID тикета
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Оценка
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/tickets.CreateRatingRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/tickets.Rating'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: already rated
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Оценить закрытый тикет
+      tags:
+      - tickets
+securityDefinitions:
+  Bearer:
+    description: Type "Bearer" + JWT token
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
