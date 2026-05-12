@@ -231,8 +231,6 @@ body{background:var(--bg);font-family:var(--sans);color:var(--tx);min-height:100
     <!-- NEW TICKET -->
     <div class="nt-s" id="nt-s">
       <div class="ntf"><label>Category</label><select id="wg-cat"><option value="">Select…</option></select></div>
-      <div class="ntf"><label>Subject</label><input type="text" id="wg-subj" placeholder="What's the issue?"></div>
-      <div class="ntf"><label>Message</label><textarea id="wg-msg" placeholder="Describe your issue…"></textarea></div>
       <button class="new-tk-btn" onclick="submitWidgetTicket()">Send request →</button>
     </div>
 
@@ -368,25 +366,17 @@ async function loadTicketList(){
 
 async function submitWidgetTicket(){
   const catID=parseInt(document.getElementById('wg-cat').value);
-  const subject=document.getElementById('wg-subj').value.trim();
-  const message=document.getElementById('wg-msg').value.trim();
   if(!catID){toast('Select a category','e');return;}
-  if(!subject){toast('Add a subject','e');return;}
-  if(!message){toast('Add a message','e');return;}
-  try{
-    const ticket=await apiPub('POST','/tickets',{category_id:catID,subject,message});
-    document.getElementById('wg-subj').value='';document.getElementById('wg-msg').value='';
+    const ticket=await apiPub('POST','/tickets',{category_id:catID});
     toast('Request sent! ✓','s');
-    await openWidgetChat(ticket.id,subject,ticket.status);
-  }catch{}
+    await openWidgetChat(ticket.id,ticket.status);
 }
 
-async function openWidgetChat(id,subject,status){
+async function openWidgetChat(id,status){
   curTk=id;
   document.getElementById('tl-s').style.display='none';
   document.getElementById('nt-s').classList.remove('on');
   document.getElementById('msgs-a').classList.add('on');
-  document.getElementById('ct-title').textContent=subject||'Ticket';
   document.getElementById('ct-sub').textContent='Your request';
   document.getElementById('back-btn').style.display='flex';
   updateStPill(status);
@@ -398,7 +388,7 @@ async function openWidgetChat(id,subject,status){
   try{
     const msgs=await apiPub('GET',`/tickets/${id}/messages`);
     ma.innerHTML='';
-    (Array.isArray(msgs)?msgs:[]).forEach(m=>appendBubble(m,false));
+	(msgs?.messages ?? []).slice().reverse().forEach(m => appendBubble(m, false));
     ma.scrollTop=ma.scrollHeight;
   }catch{}
 

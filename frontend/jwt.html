@@ -598,7 +598,7 @@ function renderInfo(tk){
       <div class="ir"><span class="ik">Created</span><span class="iv">${fmt(tk.created_at)}</span></div>
       <div class="ir"><span class="ik">Updated</span><span class="iv">${fmt(tk.updated_at)}</span></div>
     </div>
-    ${tk.status!=='closed'?`<div class="ic fade"><button class="close-tk" onclick="closeTk('${tk.id}')">Close this request</button></div>`:''}
+    ${tk.status!=='closed'?``:''}
   `;
 }
 

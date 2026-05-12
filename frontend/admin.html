@@ -245,7 +245,6 @@ td{padding:8px 16px;font-size:11px;vertical-align:middle;}
     <div class="ni on" onclick="nav('dashboard')"><span class="ni-dot"></span>Dashboard</div>
     <div class="ng">Operations</div>
     <div class="ni" onclick="nav('tickets')"><span class="ni-dot"></span>Tickets<span class="ni-badge" id="nb" style="display:none">0</span></div>
-    <div class="ni" onclick="nav('contacts')"><span class="ni-dot"></span>Contacts</div>
     <div class="ni" onclick="nav('activity')"><span class="ni-dot"></span>Activity Log</div>
     <div class="ng">Config</div>
     <div class="ni" onclick="nav('categories')"><span class="ni-dot"></span>Categories</div>
@@ -456,6 +455,7 @@ function updateChSt(status){
 }
 
 function appendMsg(m,scroll=true){
+  console.log(m);
   const c=document.getElementById('ch-msgs');if(!c)return;
   if(document.getElementById(`m-${m.id}`))return;
   const t=m.sender_type,atBot=c.scrollHeight-c.scrollTop<=c.clientHeight+60;
@@ -542,7 +542,7 @@ async function loadMessages(id){
   try{
     const list=await api('GET',`/support/tickets/${id}/messages`);
     msgs.innerHTML='';
-    (Array.isArray(list)?list:[]).forEach(m=>appendMsg(m,false));
+	(list?.messages ?? []).slice().reverse().forEach(m => appendMsg(m, false));
     msgs.scrollTop=msgs.scrollHeight;
   }catch{msgs.innerHTML='';}
 }
@@ -657,7 +657,7 @@ function renderNode(node,scID){
   const cond=node.condition?`<span class="step-cond">if "${node.condition}"</span>`:`<span style="color:var(--di)">default</span>`;
   const isRoot=node.parent_id===null||node.parent_id===undefined;
   const ch=node.children&&node.children.length?`<div class="step-children"><div class="step-ch-lbl">children</div>${node.children.map(c=>renderNode(c,scID)).join('')}</div>`:'';
-  return`<div class="step-node"><div class="step-card"><div class="step-cont"><div class="step-q">${escHtml(node.question||'—')}</div><div class="step-meta"><span>#${node.id}</span>${isRoot?`<span style="color:var(--gn)">root</span>`:`<span>↑ #${node.parent_id}</span>`}${cond}</div></div><div class="step-acts"><button class="btn btn-gh btn-xs" onclick="openEditStep(${scID},${node.id},${JSON.stringify(node.question||'')},${JSON.stringify(node.condition||'')})">edit</button><button class="add-child" onclick="openAddStep(${scID},${node.id})">+ child</button><button class="btn btn-rd btn-xs" onclick="delStep(${scID},${node.id})">✕</button></div></div>${ch}</div>`;
+  return`<div class="step-node"><div class="step-card"><div class="step-cont"><div class="step-q">${escHtml(node.question||'—')}</div><div class="step-meta"><span>#${node.id}</span>${isRoot?`<span style="color:var(--gn)">root</span>`:`<span>↑ #${node.parent_id}</span>`}${cond}</div></div><div class="step-acts"><button class="add-child" onclick="openAddStep(${scID},${node.id})">+ child</button><button class="btn btn-rd btn-xs" onclick="delStep(${scID},${node.id})">✕</button></div></div>${ch}</div>`;
 }
 async function toggleSc(id,active){try{await api('PATCH',`/scenarios/${id}`,{is_active:active});toast(`${active?'Activated':'Deactivated'}`,'s');await loadScenarios();loadScDetail(id);}catch{}}
 async function delSc(id){if(!confirm(`Delete scenario #${id}?`))return;try{await api('DELETE',`/scenarios/${id}`);toast('Deleted','s');curSc=null;document.getElementById('tree-ed').innerHTML=`<div class="tree-empty"><div style="font-size:30px;opacity:.15">◎</div><div>select a scenario</div></div>`;loadScenarios();}catch{}}
