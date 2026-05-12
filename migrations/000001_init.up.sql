@@ -9,7 +9,7 @@ create table categories (
 
 create table contacts (
     id serial primary key,
-    user_id text unique,
+    user_id text,
     external_id text unique,
     name text,
     phone text unique,
@@ -62,7 +62,7 @@ create table bot_steps (
 
 create table bot_sessions (
     ticket_id uuid primary key references tickets(id) on delete cascade,
-    scenario_id int not null references bot_scenarios(id),
+    scenario_id int not null references bot_scenarios(id) on delete cascade,
     current_step_id int not null references bot_steps(id),
     created_at timestamp not null default now(),
     last_activity_at timestamp not null default now()
