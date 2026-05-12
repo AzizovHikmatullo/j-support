@@ -71,13 +71,18 @@ func resolveFromJWT(c *gin.Context, tokenStr, secret string) (channel.Identity, 
 		return channel.Identity{}, ErrUnauthorized
 	}
 
-	c.Set("userID", claims.UserID)
-	c.Set("role", claims.Role)
-	return channel.Identity{
-		ChannelType: channel.ChannelApp,
+	identity := channel.Identity{
+		ChannelType: channel.ChannelUserApp,
 		ID:          strconv.Itoa(claims.UserID),
 		Role:        claims.Role,
-	}, nil
+	}
+	if claims.Role == "driver" {
+		identity.ChannelType = channel.ChannelDriverApp
+	}
+
+	c.Set("userID", claims.UserID)
+	c.Set("role", claims.Role)
+	return identity, nil
 }
 
 func resolveFromTelegramID(c *gin.Context, tgID string) (channel.Identity, error) {

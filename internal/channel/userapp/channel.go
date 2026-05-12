@@ -1,4 +1,4 @@
-package app
+package userapp
 
 import (
 	"context"
@@ -7,19 +7,19 @@ import (
 	"github.com/AzizovHikmatullo/j-support/internal/contacts"
 )
 
-type appChannel struct {
+type userAppChannel struct {
 	contactService contacts.Service
 }
 
 func New(contactService contacts.Service) channel.Channel {
-	return &appChannel{contactService: contactService}
+	return &userAppChannel{contactService: contactService}
 }
 
-func (c *appChannel) Name() string {
-	return channel.ChannelApp
+func (c *userAppChannel) Name() string {
+	return channel.ChannelUserApp
 }
 
-func (c *appChannel) ResolveContact(ctx context.Context, rawID string) (*contacts.Contact, error) {
+func (c *userAppChannel) ResolveContact(ctx context.Context, rawID string) (*contacts.Contact, error) {
 	contact, err := c.contactService.Resolve(ctx, &rawID, nil)
 	if err != nil {
 		return nil, err

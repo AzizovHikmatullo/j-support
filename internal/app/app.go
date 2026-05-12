@@ -8,8 +8,9 @@ import (
 	"github.com/AzizovHikmatullo/j-support/internal/activity_log"
 	"github.com/AzizovHikmatullo/j-support/internal/categories"
 	"github.com/AzizovHikmatullo/j-support/internal/channel"
-	channelApp "github.com/AzizovHikmatullo/j-support/internal/channel/app"
+	channelDriverApp "github.com/AzizovHikmatullo/j-support/internal/channel/driverapp"
 	channelTelegram "github.com/AzizovHikmatullo/j-support/internal/channel/telegram"
+	channelUserApp "github.com/AzizovHikmatullo/j-support/internal/channel/userapp"
 	channelWeb "github.com/AzizovHikmatullo/j-support/internal/channel/web"
 	"github.com/AzizovHikmatullo/j-support/internal/config"
 	"github.com/AzizovHikmatullo/j-support/internal/contacts"
@@ -119,7 +120,8 @@ func (a *App) InitRoutes() {
 	// ----------
 
 	registry := channel.NewRegistry()
-	registry.Register(channelApp.New(contactService))
+	registry.Register(channelUserApp.New(contactService))
+	registry.Register(channelDriverApp.New(contactService))
 	registry.Register(channelWeb.New(contactService))
 	registry.Register(channelTelegram.New(contactService))
 
@@ -163,12 +165,12 @@ func (a *App) InitRoutes() {
 	clientRoutes := a.router.Group("/tickets")
 	clientRoutes.Use(middleware.ChannelIdentityMiddleware(a.cfg.JWT.Secret))
 	{
-		clientRoutes.POST("", middleware.RequireRole("user"), idem, ticketsHandler.Create)
-		clientRoutes.GET("", middleware.RequireRole("user"), ticketsHandler.GetMine)
-		clientRoutes.GET(":id", middleware.RequireRole("user"), ticketsHandler.GetMineByID)
-		clientRoutes.POST(":id/rate", middleware.RequireRole("user"), ticketsHandler.Rate)
-		clientRoutes.POST(":id/messages", middleware.RequireRole("user"), idem, ticketsHandler.CreateMessageByUser)
-		clientRoutes.GET(":id/messages", middleware.RequireRole("user"), ticketsHandler.GetMessagesForUser)
+		clientRoutes.POST("", middleware.RequireRole("user", "driver"), idem, ticketsHandler.Create)
+		clientRoutes.GET("", middleware.RequireRole("user", "driver"), ticketsHandler.GetMine)
+		clientRoutes.GET(":id", middleware.RequireRole("user", "driver"), ticketsHandler.GetMineByID)
+		clientRoutes.POST(":id/rate", middleware.RequireRole("user", "driver"), ticketsHandler.Rate)
+		clientRoutes.POST(":id/messages", middleware.RequireRole("user", "driver"), idem, ticketsHandler.CreateMessageByUser)
+		clientRoutes.GET(":id/messages", middleware.RequireRole("user", "driver"), ticketsHandler.GetMessagesForUser)
 	}
 
 	// ---------
