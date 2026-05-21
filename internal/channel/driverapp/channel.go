@@ -20,7 +20,7 @@ func (c *driverAppChannel) Name() string {
 }
 
 func (c *driverAppChannel) ResolveContact(ctx context.Context, rawID string) (*contacts.Contact, error) {
-	contact, err := c.contactService.Resolve(ctx, &rawID, nil)
+	contact, err := c.contactService.Resolve(ctx, &rawID, nil, channel.ChannelDriverApp)
 	if err != nil {
 		return nil, err
 	}

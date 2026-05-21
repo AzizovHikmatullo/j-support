@@ -20,7 +20,7 @@ func (c *userAppChannel) Name() string {
 }
 
 func (c *userAppChannel) ResolveContact(ctx context.Context, rawID string) (*contacts.Contact, error) {
-	contact, err := c.contactService.Resolve(ctx, &rawID, nil)
+	contact, err := c.contactService.Resolve(ctx, &rawID, nil, channel.ChannelUserApp)
 	if err != nil {
 		return nil, err
 	}

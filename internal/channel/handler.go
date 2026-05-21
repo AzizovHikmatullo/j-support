@@ -36,7 +36,7 @@ func (h *handler) InitWeb(c *gin.Context) {
 
 	sessionID := "js_" + uuid.Must(uuid.NewV7()).String()
 
-	contact, err := h.contactService.InitContact(c.Request.Context(), sessionID, req.Name, req.Phone)
+	contact, err := h.contactService.InitContact(c.Request.Context(), sessionID, req.Name, req.Phone, ChannelWeb)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to create contact"})
 		return
@@ -63,7 +63,7 @@ func (h *handler) InitTelegram(c *gin.Context) {
 		return
 	}
 
-	contact, err := h.contactService.InitContact(c.Request.Context(), req.TelegramID, req.Name, req.Phone)
+	contact, err := h.contactService.InitContact(c.Request.Context(), req.TelegramID, req.Name, req.Phone, ChannelTelegram)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to create contact"})
 		return

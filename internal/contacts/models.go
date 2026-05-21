@@ -12,6 +12,7 @@ type Contact struct {
 	ExternalID *string   `db:"external_id" json:"external_id,omitempty"`
 	Name       *string   `db:"name" json:"name,omitempty"`
 	Phone      *string   `db:"phone" json:"phone,omitempty"`
+	Source     string    `db:"source" json:"source"`
 	CreatedAt  time.Time `db:"created_at" json:"created_at"`
 }
 

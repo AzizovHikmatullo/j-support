@@ -8,12 +8,12 @@ import (
 )
 
 type Repository interface {
-	GetByUserID(ctx context.Context, userID string) (Contact, error)
-	GetByExternalID(ctx context.Context, externalID string) (Contact, error)
+	GetByUserID(ctx context.Context, userID, source string) (Contact, error)
+	GetByExternalID(ctx context.Context, externalID, source string) (Contact, error)
+	GetByPhone(ctx context.Context, phone, source string) (Contact, error)
 	GetByID(ctx context.Context, id int) (Contact, error)
 	Create(ctx context.Context, contact *Contact) error
 	Update(ctx context.Context, id int, name, phone string) (Contact, error)
-	GetByPhone(ctx context.Context, phone string) (Contact, error)
 }
 
 type service struct {
@@ -29,9 +29,9 @@ func NewService(repo Repository, logger *slog.Logger) Service {
 	}
 }
 
-func (s *service) Resolve(ctx context.Context, userID, externalID *string) (Contact, error) {
+func (s *service) Resolve(ctx context.Context, userID, externalID *string, source string) (Contact, error) {
 	if userID != nil {
-		contact, err := s.resolveByUserID(ctx, userID)
+		contact, err := s.resolveByUserID(ctx, userID, source)
 		if err != nil {
 			return Contact{}, fmt.Errorf("resolve by userID: %w", err)
 		}
@@ -39,7 +39,7 @@ func (s *service) Resolve(ctx context.Context, userID, externalID *string) (Cont
 	}
 
 	if externalID != nil {
-		contact, err := s.resolveByExternalID(ctx, externalID)
+		contact, err := s.resolveByExternalID(ctx, externalID, source)
 		if err != nil {
 			return Contact{}, fmt.Errorf("resolve by externalID: %w", err)
 		}
@@ -49,8 +49,8 @@ func (s *service) Resolve(ctx context.Context, userID, externalID *string) (Cont
 	return Contact{}, fmt.Errorf("resolve contact: userID and externalID is nil")
 }
 
-func (s *service) resolveByUserID(ctx context.Context, userID *string) (Contact, error) {
-	contact, err := s.repo.GetByUserID(ctx, *userID)
+func (s *service) resolveByUserID(ctx context.Context, userID *string, source string) (Contact, error) {
+	contact, err := s.repo.GetByUserID(ctx, *userID, source)
 	if err == nil {
 		return contact, nil
 	}
@@ -59,13 +59,13 @@ func (s *service) resolveByUserID(ctx context.Context, userID *string) (Contact,
 		return Contact{}, err
 	}
 
-	newContact := Contact{UserID: userID}
+	newContact := Contact{UserID: userID, Source: source}
 	err = s.repo.Create(ctx, &newContact)
 	return newContact, err
 }
 
-func (s *service) resolveByExternalID(ctx context.Context, externalID *string) (Contact, error) {
-	contact, err := s.repo.GetByExternalID(ctx, *externalID)
+func (s *service) resolveByExternalID(ctx context.Context, externalID *string, source string) (Contact, error) {
+	contact, err := s.repo.GetByExternalID(ctx, *externalID, source)
 	if err == nil {
 		return contact, nil
 	}
@@ -74,7 +74,7 @@ func (s *service) resolveByExternalID(ctx context.Context, externalID *string) (
 		return Contact{}, err
 	}
 
-	newContact := Contact{ExternalID: externalID}
+	newContact := Contact{ExternalID: externalID, Source: source}
 	err = s.repo.Create(ctx, &newContact)
 	return newContact, err
 }
@@ -96,8 +96,8 @@ func (s *service) Update(ctx context.Context, id int, name, phone string) (Conta
 	return updatedContact, nil
 }
 
-func (s *service) InitContact(ctx context.Context, externalID, name, phone string) (Contact, error) {
-	c, err := s.repo.GetByPhone(ctx, phone)
+func (s *service) InitContact(ctx context.Context, externalID, name, phone, source string) (Contact, error) {
+	c, err := s.repo.GetByPhone(ctx, phone, source)
 	if err == nil {
 		if c.ExternalID == nil {
 			c.ExternalID = &externalID
@@ -109,7 +109,7 @@ func (s *service) InitContact(ctx context.Context, externalID, name, phone strin
 		return Contact{}, err
 	}
 
-	contact, err := s.Resolve(ctx, nil, &externalID)
+	contact, err := s.Resolve(ctx, nil, &externalID, source)
 	if err != nil {
 		return Contact{}, err
 	}

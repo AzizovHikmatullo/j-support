@@ -20,7 +20,7 @@ func (c *tgChannel) Name() string {
 }
 
 func (c *tgChannel) ResolveContact(ctx context.Context, rawID string) (*contacts.Contact, error) {
-	contact, err := c.contactService.Resolve(ctx, nil, &rawID)
+	contact, err := c.contactService.Resolve(ctx, nil, &rawID, channel.ChannelTelegram)
 	if err != nil {
 		return nil, err
 	}
