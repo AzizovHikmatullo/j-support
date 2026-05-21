@@ -1,7 +1,10 @@
 package tickets
 
 import (
+	"database/sql/driver"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +17,7 @@ type Ticket struct {
 	AssignedTo *int      `json:"assigned_to" db:"assigned_id"`
 	Status     string    `json:"status" db:"status"`
 	Source     string    `json:"source" db:"source"`
+	Metadata   Metadata  `json:"metadata" db:"metadata"`
 	CreatedAt  time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at" db:"updated_at"`
 }
@@ -64,6 +68,30 @@ type CreateMessageRequest struct {
 type CreateRatingRequest struct {
 	Score  int     `json:"score" binding:"required"`
 	Reason *string `json:"reason"`
+}
+
+type Metadata map[string]any
+
+func (m Metadata) Value() (driver.Value, error) {
+	return json.Marshal(m)
+}
+
+func (m *Metadata) Scan(value any) error {
+	if value == nil {
+		*m = Metadata{}
+		return nil
+	}
+
+	switch v := value.(type) {
+	case []byte:
+		return json.Unmarshal(v, m)
+
+	case string:
+		return json.Unmarshal([]byte(v), m)
+
+	default:
+		return fmt.Errorf("unsupported type: %T", value)
+	}
 }
 
 var (
