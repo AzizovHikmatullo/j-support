@@ -9,6 +9,8 @@ const (
 	ChannelDriverApp string = "driver"
 	ChannelWeb       string = "web"
 	ChannelTelegram  string = "telegram"
+	ChannelInstagram string = "instagram"
+	ChannelFacebook  string = "facebook"
 )
 
 type Identity struct {

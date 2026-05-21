@@ -9,6 +9,8 @@ import (
 	"github.com/AzizovHikmatullo/j-support/internal/categories"
 	"github.com/AzizovHikmatullo/j-support/internal/channel"
 	channelDriverApp "github.com/AzizovHikmatullo/j-support/internal/channel/driverapp"
+	channelFacebook "github.com/AzizovHikmatullo/j-support/internal/channel/facebook"
+	channelInstagram "github.com/AzizovHikmatullo/j-support/internal/channel/instagram"
 	channelTelegram "github.com/AzizovHikmatullo/j-support/internal/channel/telegram"
 	channelUserApp "github.com/AzizovHikmatullo/j-support/internal/channel/userapp"
 	channelWeb "github.com/AzizovHikmatullo/j-support/internal/channel/web"
@@ -124,6 +126,8 @@ func (a *App) InitRoutes() {
 	registry.Register(channelDriverApp.New(contactService))
 	registry.Register(channelWeb.New(contactService))
 	registry.Register(channelTelegram.New(contactService))
+	registry.Register(channelFacebook.New(contactService))
+	registry.Register(channelInstagram.New(contactService))
 
 	// ---------
 	// TICKETS
