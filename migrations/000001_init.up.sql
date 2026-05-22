@@ -10,10 +10,14 @@ create table categories (
 create table contacts (
     id serial primary key,
     user_id text,
-    external_id text unique,
+    external_id text,
     name text,
-    phone text unique,
-    created_at timestamp not null default now()
+    phone text,
+    source text not null,
+    created_at timestamp not null default now(),
+
+    unique (user_id, source),
+    unique (external_id, source)
 );
 
 create table tickets (
@@ -23,6 +27,7 @@ create table tickets (
     assigned_id integer,
     status text not null,
     source text not null,
+    metadata jsonb,
     created_at timestamp not null default now(),
     updated_at timestamp not null default now()
 );
@@ -32,7 +37,8 @@ create table ticket_ratings (
     ticket_id uuid not null unique references tickets(id) on delete cascade,
     contact_id int not null references contacts(id),
     score int not null check (score between 1 and 5),
-    reason text
+    reason text,
+    created_at timestamp default now()
 );
 
 create table messages (
