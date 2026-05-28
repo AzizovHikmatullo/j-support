@@ -6,6 +6,11 @@ services:
       - .env
     ports:
       - "5438:${POSTGRES_PORT}"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - db_data:/var/lib/postgresql/data
 
@@ -13,7 +18,8 @@ services:
     image: migrate/migrate:v4.19.1
     container_name: j-support-migrate
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       - ./migrations:/migrations
     env_file:
@@ -35,7 +41,8 @@ services:
     ports:
       - "8080:${SERVER_PORT}"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   db_data:
